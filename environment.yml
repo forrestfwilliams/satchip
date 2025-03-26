@@ -1,0 +1,15 @@
+name: satchip
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python>=3.10
+  - pip
+  # For packaging, and testing
+  - setuptools_scm
+  - pytest
+  - pytest-console-scripts
+  - pytest-cov
+  # TODO: insert conda-forge dependencies as list here
+  - pip:
+      - -r requirements-static.txt
