@@ -11,6 +11,7 @@ dependencies:
   - rasterio
   - rioxarray
   - shapely
+  - fsspec
   - python>=3.10
   - pip
   # For packaging, and testing
