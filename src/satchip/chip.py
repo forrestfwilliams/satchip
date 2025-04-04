@@ -69,10 +69,10 @@ def chip_labels(label_path: Path, date: datetime, output_dir: Path) -> Path:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description='Chip an image')
-    parser.add_argument('label_path', type=str, help='Path to the label image')
+    parser = argparse.ArgumentParser(description='Chip a label image')
+    parser.add_argument('label-path', type=str, help='Path to the label image')
     parser.add_argument('date', type=str, help='Date and time of the image in ISO format (YYYY-MM-DDTHH:MM:SS)')
-    parser.add_argument('--output_dir', default='.', type=str, help='Output directory for the chips')
+    parser.add_argument('--output-dir', default='.', type=str, help='Output directory for the chips')
     args = parser.parse_args()
     args.label_path = Path(args.label_path)
     args.date = datetime.fromisoformat(args.date)
