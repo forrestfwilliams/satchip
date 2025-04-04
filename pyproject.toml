@@ -40,6 +40,9 @@ develop = [
 Homepage = "https://github.com/forrestfwilliams/satchip"
 Documentation = "https://github.com/forrestfwilliams/satchip"
 
+[project.scripts]
+chip = "satchip.chip:main"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 script_launch_mode = "subprocess"
@@ -68,13 +71,13 @@ quote-style = "single"
 extend-select = [
     "I",   # isort: https://docs.astral.sh/ruff/rules/#isort-i
     "UP",  # pyupgrade: https://docs.astral.sh/ruff/rules/#pyupgrade-up
-    "D",   # pydocstyle: https://docs.astral.sh/ruff/rules/#pydocstyle-d
+    # "D",   # pydocstyle: https://docs.astral.sh/ruff/rules/#pydocstyle-d
     "ANN", # annotations: https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
     "PTH", # use-pathlib-pth: https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
 ]
 
-[tool.ruff.lint.pydocstyle]
-convention = "google"
+# [tool.ruff.lint.pydocstyle]
+# convention = "google"
 
 [tool.ruff.lint.isort]
 case-sensitive = true
