@@ -35,9 +35,8 @@ def chip_labels(label_path: Path, date: datetime, output_dir: Path) -> Path:
     label = xr.open_dataarray(label_path)
     bbox = get_epsg4326_bbox(label.rio.bounds(), label.rio.crs.to_epsg())
     tm_grid = TerraMindGrid(latitude_range=(bbox[1], bbox[3]), longitude_range=(bbox[0], bbox[2]))
-    # tm_grid.major_tom_grid.latlon2rowcol([0],[0])
     chips = {}
-    for tm_chip in tqdm(tm_grid.terra_mind_chips[1500:1750]):
+    for tm_chip in tqdm(tm_grid.terra_mind_chips):
         chip = label.rio.reproject(
             dst_crs=f'EPSG:{tm_chip.epsg}',
             resampling=rio.enums.Resampling(1),
@@ -56,6 +55,7 @@ def chip_labels(label_path: Path, date: datetime, output_dir: Path) -> Path:
         'y': np.arange(0, chip_array.shape[0]),
         'x': np.arange(0, chip_array.shape[1]),
     }
+    print(f'Found {len(chips)} valid chips for {label_path.name}')
     np_array = np.expand_dims(np.stack(list(chips.values()), axis=0), axis=[0, 1])
     data_array = xr.DataArray(np_array, coords=coords, dims=coords.keys())
     dataset = xr.Dataset(attrs={'data_created': date.isoformat(), 'satchip_version': satchip.__version__})
