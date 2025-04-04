@@ -1,4 +1,4 @@
-"""A package for satellite image AI data prep"""
+"""A package for satellite image AI data prep."""
 
 from importlib.metadata import version
 
