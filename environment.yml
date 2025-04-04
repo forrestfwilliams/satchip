@@ -3,6 +3,14 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
+  - numpy
+  - gdal
+  - pandas
+  - geopandas
+  - xarray
+  - rasterio
+  - rioxarray
+  - shapely
   - python>=3.10
   - pip
   # For packaging, and testing
