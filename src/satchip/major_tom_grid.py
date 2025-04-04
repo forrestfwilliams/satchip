@@ -1,5 +1,6 @@
 import math
 import re
+from typing import Any
 
 import geopandas as gpd
 import numpy as np
@@ -38,13 +39,13 @@ class MajorTomGrid:
         zeroth_row = np.searchsorted(latitudes, 0)
 
         # From 0U-NU and 1D-ND
-        rows = [None] * len(latitudes)
+        rows: list[Any] = [None] * len(latitudes)
         rows[zeroth_row:] = [f'{i}U' for i in range(len(latitudes) - zeroth_row)]
         rows[:zeroth_row] = [f'{abs(i - zeroth_row)}D' for i in range(zeroth_row)]
 
         # bound to range
         idxs = (latitudes >= self.latitude_range[0]) * (latitudes <= self.latitude_range[1])
-        rows, latitudes = np.array(rows), np.array(latitudes)
+        rows, latitudes = np.array(rows), np.array(latitudes)  # type: ignore
         rows, latitudes = rows[idxs], latitudes[idxs]
 
         return rows, latitudes
@@ -68,11 +69,11 @@ class MajorTomGrid:
         longitudes = np.sort(longitudes)
 
         if return_cols:
-            cols = [None] * len(longitudes)
+            cols: list[Any] = [None] * len(longitudes)
             zeroth_idx = np.where(longitudes == 0)[0][0]
             cols[zeroth_idx:] = [f'{i}R' for i in range(len(longitudes) - zeroth_idx)]
             cols[:zeroth_idx] = [f'{abs(i - zeroth_idx)}L' for i in range(zeroth_idx)]
-            return np.array(cols), np.array(longitudes)
+            return np.array(cols), np.array(longitudes)  # type: ignore
 
         return np.array(longitudes)
 
@@ -129,7 +130,7 @@ class MajorTomGrid:
             r_idx += 1
         points = gpd.GeoDataFrame(pd.concat(points_by_row))
         # points.reset_index(inplace=True,drop=True)
-        return points, points_by_row
+        return points, points_by_row  # type: ignore
 
     def group_points_by_row(self) -> gpd.GeoDataFrame:
         # Make list of different gdfs for each row
@@ -157,7 +158,7 @@ class MajorTomGrid:
         ]
         rows = self.rows[rows].tolist()
 
-        outputs = [rows, cols]
+        outputs = [list(rows), list(cols)]
         if return_idx:
             # Get the table index for self.points with each row,col pair in rows, cols
             idx = [
