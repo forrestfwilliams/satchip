@@ -14,7 +14,7 @@ import satchip
 from satchip.terra_mind_grid import TerraMindGrid
 
 
-def get_epsg4326_bbox(bounds: list, in_epsg: int, buffer: float = 0.1) -> tuple:
+def get_epsg4326_bbox(bounds: list, in_epsg: int, buffer: float = 0.1) -> list:
     if in_epsg == 4326:
         return bounds
     in_crs = CRS.from_epsg(in_epsg)
@@ -22,8 +22,8 @@ def get_epsg4326_bbox(bounds: list, in_epsg: int, buffer: float = 0.1) -> tuple:
     transformer = Transformer.from_crs(in_crs, out_crs, always_xy=True)
     minx, miny = transformer.transform(bounds[0], bounds[1])
     maxx, maxy = transformer.transform(bounds[2], bounds[3])
-    minx, miny, maxx, maxy = minx - buffer, miny - buffer, maxx + buffer, maxy + buffer
-    return minx, miny, maxx, maxy
+    bbox = minx - buffer, miny - buffer, maxx + buffer, maxy + buffer
+    return list(bbox)
 
 
 def is_valuable(chip: np.ndarray) -> bool:
@@ -63,7 +63,8 @@ def chip_labels(label_path: Path, date: datetime, output_dir: Path) -> Path:
     with TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir) / 'tmp.zarr'
         dataset.to_zarr(tmp_path)
-        shutil.make_archive(output_path, 'zip', tmp_path)
+        shutil.make_archive(str(output_path), 'zip', tmp_path)
+    return output_path
 
 
 def main() -> None:
