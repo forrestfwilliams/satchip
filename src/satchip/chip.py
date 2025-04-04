@@ -70,14 +70,14 @@ def chip_labels(label_path: Path, date: datetime, output_dir: Path) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description='Chip a label image')
-    parser.add_argument('label-path', type=str, help='Path to the label image')
+    parser.add_argument('labelpath', type=str, help='Path to the label image')
     parser.add_argument('date', type=str, help='Date and time of the image in ISO format (YYYY-MM-DDTHH:MM:SS)')
-    parser.add_argument('--output-dir', default='.', type=str, help='Output directory for the chips')
+    parser.add_argument('--outdir', default='.', type=str, help='Output directory for the chips')
     args = parser.parse_args()
-    args.label_path = Path(args.label_path)
+    args.labelpath = Path(args.labelpath)
     args.date = datetime.fromisoformat(args.date)
-    args.output_dir = Path(args.output_dir)
-    chip_labels(args.label_path, args.date, args.output_dir)
+    args.outdir = Path(args.outdir)
+    chip_labels(args.labelpath, args.date, args.outdir)
 
 
 if __name__ == '__main__':
