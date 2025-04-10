@@ -7,9 +7,27 @@ import rioxarray
 import shapely
 import xarray as xr
 from pystac_client import Client
+from tqdm import tqdm
 
+import satchip
 from satchip import utils
 from satchip.terra_mind_grid import TerraMindChip, TerraMindGrid
+
+
+S2_BANDS = {
+    'B01': 'coastal',
+    'B02': 'blue',
+    'B03': 'green',
+    'B04': 'red',
+    'B05': 'rededge1',
+    'B06': 'rededge2',
+    'B07': 'rededge3',
+    'B08': 'nir',
+    'B8A': 'nir08',
+    'B09': 'nir09',
+    'B11': 'swir16',
+    'B12': 'swir22',
+}
 
 
 def create_template_da(chip: TerraMindChip) -> xr.DataArray:
@@ -45,30 +63,20 @@ def get_s2l2a_data(chip: TerraMindChip, date: datetime) -> xr.DataArray:
         intersection = roi.intersection(image_footprint)
         coverage.append(intersection.area / roi.area)
     item = items[coverage.index(max(coverage))]
-    bands = {
-        'B01': 'coastal',
-        'B02': 'blue',
-        'B03': 'green',
-        'B04': 'red',
-        'B05': 'rededge1',
-        'B06': 'rededge2',
-        'B07': 'rededge3',
-        'B08': 'nir',
-        'B8A': 'nir08',
-        'B09': 'nir09',
-        'B11': 'swir16',
-        'B12': 'swir22',
-    }
     roi_buffered = roi.buffer(0.1)
     das = []
     template = create_template_da(chip)
-    for band in bands:
-        href = item.assets[bands[band]].href
+    for band in S2_BANDS:
+        href = item.assets[S2_BANDS[band]].href
         da = rioxarray.open_rasterio(href).rio.clip_box(*roi_buffered.bounds, crs='EPSG:4326')
         da['band'] = [band]
         da_reproj = da.rio.reproject_match(template)
         das.append(da_reproj)
-    dataarray = xr.concat(das, dim='band')
+    dataarray = xr.concat(das, dim='band').drop_vars('spatial_ref')
+    dataarray['x'] = np.arange(0, chip.ncol)
+    dataarray['y'] = np.arange(0, chip.nrow)
+    dataarray = dataarray.expand_dims({'time': [item.datetime.replace(tzinfo=None)], 'sample': [chip.name]})
+    dataarray.attrs = {}
     return dataarray
 
 
@@ -76,10 +84,19 @@ def chip_sentinel2(label_path: str, output_dir: Path) -> Path:
     labels = utils.load_chip(label_path)
     date = labels.time.data[0].astype('M8[ms]').astype(datetime)
     bounds = labels.attrs['bounds']
-    grid = TerraMindGrid([bounds[1], bounds[3]], [bounds[0], bounds[2]])
+    grid = TerraMindGrid([bounds[1] - 1, bounds[3] + 1], [bounds[0] - 1, bounds[2] + 1])
+    terra_mind_chips = [c for c in grid.terra_mind_chips if c.name in list(labels.sample.data)]
     data_chips = []
-    for chip in grid.terra_mind_chips:
+    for chip in tqdm(terra_mind_chips):
         data_chips.append(get_s2l2a_data(chip, date))
+    attrs = {'date_created': date.isoformat(), 'satchip_version': satchip.__version__, 'bounds': labels.attrs['bounds']}
+    dataset = xr.Dataset(attrs=attrs)
+    # NOTE: may only work when all chips have same date
+    dataset['bands'] = xr.concat(data_chips, dim='sample')
+    dataset['lats'] = labels['lats']
+    dataset['lons'] = labels['lons']
+    output_path = output_dir / (label_path.with_suffix('').with_suffix('').name + '_S2.zarr.zip')
+    utils.save_chip(dataset, output_path)
     return labels
 
 
