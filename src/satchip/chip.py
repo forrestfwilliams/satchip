@@ -37,8 +37,7 @@ def chip_labels(label_path: Path, date: datetime, output_dir: Path) -> Path:
 
     if len(chips) == 0:
         raise ValueError(f'No valid chips found for {label_path.name}')
-    
-    breakpoint()
+
     coords = {
         'time': np.array([date]),
         'band': np.array(['labels']),

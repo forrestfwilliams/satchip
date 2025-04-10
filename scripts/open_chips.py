@@ -6,7 +6,6 @@ import xarray as xr
 
 def open_chips(input_path: Path) -> xr.Dataset:
     ds = xr.open_zarr(input_path)
-    breakpoint()
     return ds
 
 
