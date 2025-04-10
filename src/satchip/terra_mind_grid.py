@@ -3,6 +3,7 @@ from itertools import product
 import pyproj
 from rasterio import Affine
 
+from satchip import utils
 from satchip.major_tom_grid import MajorTomGrid
 
 
@@ -18,8 +19,22 @@ class Chip:
         self.nrow = nrow
         self.ncol = ncol
         self.epsg = epsg
+        self.center = self.get_center()
+        self.bounds = self.get_bounds()
         self.gdal_transform = self.get_gdal_transform()
         self.rio_transform = Affine.from_gdal(*self.gdal_transform)
+
+    def get_center(self) -> tuple:
+        center_x = self.minx + (self.ncol * self.xres) / 2
+        center_y = self.maxy + (self.nrow * self.yres) / 2
+        return utils.get_epsg4326_point(center_x, center_y, self.epsg)
+
+    def get_bounds(self) -> tuple:
+        minx = self.minx
+        maxy = self.maxy
+        maxx = minx + (self.ncol * self.xres)
+        miny = maxy + (self.nrow * self.yres)
+        return utils.get_epsg4326_bbox((minx, miny, maxx, maxy), self.epsg, buffer=0)
 
     def get_gdal_transform(self) -> tuple:
         return (self.minx, self.xres, 0.0, self.maxy, 0.0, self.yres)

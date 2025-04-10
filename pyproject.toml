@@ -42,6 +42,7 @@ Documentation = "https://github.com/forrestfwilliams/satchip"
 
 [project.scripts]
 chip = "satchip.chip:main"
+chipdata = "satchip.chip_sentinel2:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

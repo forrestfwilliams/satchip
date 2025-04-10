@@ -10,6 +10,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 - Ability to chip label images to MajorTom/TerraMind grids.
+- Ability to create Sentinel-2 chips based on an input label chip.
 
 ## [0.1.0]
 
