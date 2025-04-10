@@ -1,9 +1,11 @@
+from pathlib import Path
+
 import xarray as xr
 import zarr
 from pyproj import CRS, Transformer
 
 
-def get_epsg4326_point(x: float, y: float, in_epsg: int) -> list:
+def get_epsg4326_point(x: float, y: float, in_epsg: int) -> tuple[float, float]:
     if in_epsg == 4326:
         return x, y
     in_crs = CRS.from_epsg(in_epsg)
@@ -13,11 +15,13 @@ def get_epsg4326_point(x: float, y: float, in_epsg: int) -> list:
     return round(newx, 5), round(newy, 5)
 
 
-def get_epsg4326_bbox(bounds: list, in_epsg: int, buffer: float = 0.1) -> list:
+def get_epsg4326_bbox(
+    bounds: tuple[float, float, float, float], in_epsg: int, buffer: float = 0.1
+) -> tuple[float, float, float, float]:
     minx, miny = get_epsg4326_point(bounds[0], bounds[1], in_epsg)
     maxx, maxy = get_epsg4326_point(bounds[2], bounds[3], in_epsg)
     bbox = minx - buffer, miny - buffer, maxx + buffer, maxy + buffer
-    return list(bbox)
+    return bbox
 
 
 def get_overall_bounds(bounds: list) -> list:
@@ -28,13 +32,13 @@ def get_overall_bounds(bounds: list) -> list:
     return [minx, miny, maxx, maxy]
 
 
-def save_chip(dataset: xr.Dataset, save_path: str) -> None:
+def save_chip(dataset: xr.Dataset, save_path: str | Path) -> None:
     """Save a zipped zarr archive"""
     store = zarr.storage.ZipStore(save_path, mode='w')
     dataset.to_zarr(store)
 
 
-def load_chip(label_path: str) -> xr.Dataset:
+def load_chip(label_path: str | Path) -> xr.Dataset:
     """Load a zipped zarr archive"""
     store = zarr.storage.ZipStore(label_path, read_only=True)
     dataset = xr.open_zarr(store)
