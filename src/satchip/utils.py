@@ -24,14 +24,6 @@ def get_epsg4326_bbox(
     return bbox
 
 
-def get_overall_bounds(bounds: list) -> list:
-    minx = min([b[0] for b in bounds])
-    miny = min([b[1] for b in bounds])
-    maxx = max([b[2] for b in bounds])
-    maxy = max([b[3] for b in bounds])
-    return [minx, miny, maxx, maxy]
-
-
 def save_chip(dataset: xr.Dataset, save_path: str | Path) -> None:
     """Save a zipped zarr archive"""
     store = zarr.storage.ZipStore(save_path, mode='w')

@@ -3,8 +3,8 @@ from itertools import product
 import pyproj
 from rasterio import Affine
 
-from satchip import utils
 from satchip.major_tom_grid import MajorTomGrid
+from satchip.utils import get_epsg4326_bbox, get_epsg4326_point
 
 
 TERRA_MIND_CHIP_SIZE = 264
@@ -30,14 +30,14 @@ class Chip:
     def get_center(self) -> tuple:
         center_x = self.minx + (self.ncol * self.xres) / 2
         center_y = self.maxy + (self.nrow * self.yres) / 2
-        return utils.get_epsg4326_point(center_x, center_y, self.epsg)
+        return get_epsg4326_point(center_x, center_y, self.epsg)
 
     def get_bounds(self) -> tuple:
         minx = self.minx
         maxy = self.maxy
         maxx = minx + (self.ncol * self.xres)
         miny = maxy + (self.nrow * self.yres)
-        return utils.get_epsg4326_bbox((minx, miny, maxx, maxy), self.epsg, buffer=0)
+        return get_epsg4326_bbox((minx, miny, maxx, maxy), self.epsg, buffer=0)
 
     def get_gdal_transform(self) -> tuple:
         return (self.minx, self.xres, 0.0, self.maxy, 0.0, self.yres)

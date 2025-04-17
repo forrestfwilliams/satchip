@@ -1,17 +1,13 @@
-import argparse
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import numpy as np
 import rioxarray
 import shapely
 import xarray as xr
 from pystac_client import Client
-from tqdm import tqdm
 
-import satchip
-from satchip import utils
-from satchip.terra_mind_grid import TerraMindChip, TerraMindGrid
+from satchip.chip_xr_base import create_template_da
+from satchip.terra_mind_grid import TerraMindChip
 
 
 S2_BANDS = {
@@ -28,15 +24,6 @@ S2_BANDS = {
     'B11': 'swir16',
     'B12': 'swir22',
 }
-
-
-def create_template_da(chip: TerraMindChip) -> xr.DataArray:
-    x = np.arange(chip.nrow) * chip.gdal_transform[1] + chip.gdal_transform[0] + chip.gdal_transform[1] / 2
-    y = np.arange(chip.ncol) * chip.gdal_transform[5] + chip.gdal_transform[3] + chip.gdal_transform[5] / 2
-    template = xr.DataArray(np.zeros((chip.ncol, chip.nrow)), dims=('y', 'x'), coords={'y': y, 'x': x})
-    template.rio.write_crs(f'EPSG:{chip.epsg}', inplace=True)
-    template.rio.write_transform(chip.rio_transform, inplace=True)
-    return template
 
 
 def get_s2l2a_data(chip: TerraMindChip, date: datetime) -> xr.DataArray:
@@ -78,37 +65,3 @@ def get_s2l2a_data(chip: TerraMindChip, date: datetime) -> xr.DataArray:
     dataarray = dataarray.expand_dims({'time': [item.datetime.replace(tzinfo=None)], 'sample': [chip.name]})
     dataarray.attrs = {}
     return dataarray
-
-
-def chip_sentinel2(label_path: str, output_dir: Path) -> Path:
-    labels = utils.load_chip(label_path)
-    date = labels.time.data[0].astype('M8[ms]').astype(datetime)
-    bounds = labels.attrs['bounds']
-    grid = TerraMindGrid([bounds[1] - 1, bounds[3] + 1], [bounds[0] - 1, bounds[2] + 1])
-    terra_mind_chips = [c for c in grid.terra_mind_chips if c.name in list(labels.sample.data)]
-    data_chips = []
-    for chip in tqdm(terra_mind_chips):
-        data_chips.append(get_s2l2a_data(chip, date))
-    attrs = {'date_created': date.isoformat(), 'satchip_version': satchip.__version__, 'bounds': labels.attrs['bounds']}
-    dataset = xr.Dataset(attrs=attrs)
-    # NOTE: may only work when all chips have same date
-    dataset['bands'] = xr.concat(data_chips, dim='sample')
-    dataset['lats'] = labels['lats']
-    dataset['lons'] = labels['lons']
-    output_path = output_dir / (label_path.with_suffix('').with_suffix('').name + '_S2.zarr.zip')
-    utils.save_chip(dataset, output_path)
-    return labels
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description='Chip a label image')
-    parser.add_argument('labelpath', type=str, help='Path to the label image')
-    parser.add_argument('--outdir', default='.', type=str, help='Output directory for the chips')
-    args = parser.parse_args()
-    args.labelpath = Path(args.labelpath)
-    args.outdir = Path(args.outdir)
-    chip_sentinel2(args.labelpath, args.outdir)
-
-
-if __name__ == '__main__':
-    main()
