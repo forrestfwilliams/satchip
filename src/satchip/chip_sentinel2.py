@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 import rioxarray
@@ -26,7 +27,7 @@ S2_BANDS = {
 }
 
 
-def get_s2l2a_data(chip: TerraMindChip, date: datetime) -> xr.DataArray:
+def get_s2l2a_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr.DataArray:
     """Returns XArray DataArray of Sentinel-2 L2A image for the given bounds and
     closest collection after date.
 

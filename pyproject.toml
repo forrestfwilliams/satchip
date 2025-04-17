@@ -34,6 +34,8 @@ dependencies = [
     "rioxarray",
     "pandas",
     "geopandas",
+    "asf_search",
+    "hyp3_sdk",
     "tqdm",
 ]
 dynamic = ["version"]

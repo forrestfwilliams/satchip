@@ -16,6 +16,8 @@ dependencies:
   - rioxarray
   - pandas
   - geopandas
+  - asf_search
+  - hyp3_sdk
   - tqdm
   # For packaging, and testing
   - setuptools_scm
