@@ -9,7 +9,7 @@ dependencies:
   - numpy
   - shapely
   - pyproj
-  - pystac_client
+  - pystac-client
   - rasterio
   - zarr
   - xarray
