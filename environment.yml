@@ -3,22 +3,24 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - numpy
-  - gdal
-  - pandas
-  - geopandas
-  - xarray
-  - rasterio
-  - rioxarray
-  - shapely
-  - fsspec
   - python>=3.10
   - pip
+  - gdal
+  - numpy
+  - shapely
+  - pyproj
+  - pystac_client
+  - rasterio
+  - zarr
+  - xarray
+  - rioxarray
+  - pandas
+  - geopandas
+  - tqdm
   # For packaging, and testing
   - setuptools_scm
   - pytest
   - pytest-console-scripts
   - pytest-cov
-  # TODO: insert conda-forge dependencies as list here
   - pip:
       - -r requirements-static.txt

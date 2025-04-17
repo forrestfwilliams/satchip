@@ -23,7 +23,18 @@ classifiers=[
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    # TODO: insert Python dependencies as list here
+    "gdal",
+    "numpy",
+    "shapely",
+    "pyproj",
+    "pystac_client",
+    "rasterio",
+    "zarr",
+    "xarray",
+    "rioxarray",
+    "pandas",
+    "geopandas",
+    "tqdm",
 ]
 dynamic = ["version"]
 
