@@ -7,6 +7,9 @@ from satchip import utils
 from satchip.major_tom_grid import MajorTomGrid
 
 
+TERRA_MIND_CHIP_SIZE = 264
+
+
 class Chip:
     def __init__(
         self, name: str, minx: float, maxy: float, xres: float, yres: float, nrow: int, ncol: int, epsg: int
@@ -50,7 +53,16 @@ class MajorTomChip(Chip):
 
 class TerraMindChip(Chip):
     def __init__(self, name: str, minx: float, maxy: float, epsg: int) -> None:
-        super().__init__(name=name, minx=minx, maxy=maxy, xres=10, yres=-10, nrow=264, ncol=264, epsg=epsg)
+        super().__init__(
+            name=name,
+            minx=minx,
+            maxy=maxy,
+            xres=10,
+            yres=-10,
+            nrow=TERRA_MIND_CHIP_SIZE,
+            ncol=TERRA_MIND_CHIP_SIZE,
+            epsg=epsg,
+        )
 
 
 class TerraMindGrid:
@@ -79,12 +91,11 @@ class TerraMindGrid:
 
     @staticmethod
     def get_terra_mind_chips_for_major_tom_chip(major_tom_chip: MajorTomChip) -> list:
-        miny = major_tom_chip.maxy + (major_tom_chip.nrow * major_tom_chip.yres)
         terra_mind_chips = []
-        for row, col in product(range(0, 4), range(0, 4)):
-            name = f'{major_tom_chip.name}_{row}_{col}'
-            minx = major_tom_chip.minx + (col * 264 * 10)
-            maxy = miny + ((row + 1) * 264 * 10)  # we need to add 264 * 10 to miny to get maxy
+        for col, row in product(range(0, 4), range(0, 4)):
+            name = f'{major_tom_chip.name}_{col}_{row}'
+            maxy = major_tom_chip.maxy + (row * TERRA_MIND_CHIP_SIZE * major_tom_chip.yres)
+            minx = major_tom_chip.minx + (col * TERRA_MIND_CHIP_SIZE * major_tom_chip.xres)
             terra_mind_chip = TerraMindChip(name=name, minx=minx, maxy=maxy, epsg=major_tom_chip.epsg)
             terra_mind_chips.append(terra_mind_chip)
         return terra_mind_chips
