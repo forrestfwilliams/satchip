@@ -12,6 +12,14 @@ from satchip import utils
 from satchip.terra_mind_grid import TerraMindGrid
 
 
+def get_overall_bounds(bounds: list) -> list:
+    minx = min([b[0] for b in bounds])
+    miny = min([b[1] for b in bounds])
+    maxx = max([b[2] for b in bounds])
+    maxy = max([b[3] for b in bounds])
+    return [minx, miny, maxx, maxy]
+
+
 def is_valuable(chip: np.ndarray) -> bool:
     vals = list(np.unique(chip))
     return not vals == [0]
@@ -50,7 +58,7 @@ def chip_labels(label_path: Path, date: datetime, output_dir: Path) -> Path:
     lats, lons = zip(*[val[1].center for val in chips.values()])
 
     dataset = xr.Dataset(attrs={'date_created': date.isoformat(), 'satchip_version': satchip.__version__})
-    dataset.attrs['bounds'] = utils.get_overall_bounds([val[1].bounds for val in chips.values()])
+    dataset.attrs['bounds'] = get_overall_bounds([val[1].bounds for val in chips.values()])
     dataset['bands'] = xr.DataArray(label_np, coords=coords, dims=list(coords.keys()))
     dataset['lats'] = xr.DataArray(np.array(lats), coords={'sample': coords['sample']}, dims=['sample'])
     dataset['lons'] = xr.DataArray(np.array(lons), coords={'sample': coords['sample']}, dims=['sample'])

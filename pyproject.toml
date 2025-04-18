@@ -34,6 +34,8 @@ dependencies = [
     "rioxarray",
     "pandas",
     "geopandas",
+    "asf_search",
+    "hyp3_sdk",
     "tqdm",
 ]
 dynamic = ["version"]
@@ -52,8 +54,8 @@ Homepage = "https://github.com/forrestfwilliams/satchip"
 Documentation = "https://github.com/forrestfwilliams/satchip"
 
 [project.scripts]
-chip = "satchip.chip:main"
-chipdata = "satchip.chip_sentinel2:main"
+chiplabel = "satchip.chip_label:main"
+chipdata = "satchip.chip_data:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
