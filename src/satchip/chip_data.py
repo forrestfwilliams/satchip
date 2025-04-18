@@ -51,8 +51,7 @@ def main() -> None:
     args.labelpath = Path(args.labelpath)
     args.platform = args.platform.upper()
     args.outdir = Path(args.outdir)
-    chip = utils.load_chip('LA_damage_20250113_v0_S1RTC.zarr.zip')
-    breakpoint()
+
     chip_data(args.labelpath, args.platform, args.outdir)
 
 
