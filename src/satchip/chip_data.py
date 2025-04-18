@@ -13,7 +13,11 @@ from satchip.chip_sentinel2 import get_s2l2a_data
 from satchip.terra_mind_grid import TerraMindGrid
 
 
-def chip_data(label_path: str, get_data_fn: callable, output_dir: Path) -> Path:
+GET_DATA_FNS = {'S2L2A': get_s2l2a_data, 'S1RTC': get_s1rtc_data}
+
+
+def chip_data(label_path: str, platform: str, output_dir: Path) -> Path:
+    get_data_fn = GET_DATA_FNS[platform]
     labels = utils.load_chip(label_path)
     date = labels.time.data[0].astype('M8[ms]').astype(datetime)
     bounds = labels.attrs['bounds']
@@ -32,7 +36,7 @@ def chip_data(label_path: str, get_data_fn: callable, output_dir: Path) -> Path:
     dataset['bands'] = xr.concat(data_chips, dim='sample')
     dataset['lats'] = labels['lats']
     dataset['lons'] = labels['lons']
-    output_path = output_dir / (label_path.with_suffix('').with_suffix('').name + '_S2.zarr.zip')
+    output_path = output_dir / (label_path.with_suffix('').with_suffix('').name + f'_{platform}.zarr.zip')
     utils.save_chip(dataset, output_path)
     return labels
 
@@ -40,16 +44,16 @@ def chip_data(label_path: str, get_data_fn: callable, output_dir: Path) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description='Chip a label image')
     parser.add_argument('labelpath', type=str, help='Path to the label image')
-    parser.add_argument('dataset', choices=['s2l2a', 's1rtc'], type=str, help='Dataset to create chips for')
+    parser.add_argument('platform', choices=['S2L2A', 'S1RTC'], type=str, help='Dataset to create chips for')
     parser.add_argument('--outdir', default='.', type=str, help='Output directory for the chips')
     args = parser.parse_args()
 
     args.labelpath = Path(args.labelpath)
-    dataset_fns = {'s2l2a': get_s2l2a_data, 's1rtc': get_s1rtc_data}
-    dataset_fn = dataset_fns[args.dataset.lower()]
+    args.platform = args.platform.upper()
     args.outdir = Path(args.outdir)
-
-    chip_data(args.labelpath, dataset_fn, args.outdir)
+    chip = utils.load_chip('LA_damage_20250113_v0_S1RTC.zarr.zip')
+    breakpoint()
+    chip_data(args.labelpath, args.platform, args.outdir)
 
 
 if __name__ == '__main__':
