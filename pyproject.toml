@@ -23,7 +23,20 @@ classifiers=[
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    # TODO: insert Python dependencies as list here
+    "gdal",
+    "numpy",
+    "shapely",
+    "pyproj",
+    "pystac-client",
+    "rasterio",
+    "zarr",
+    "xarray",
+    "rioxarray",
+    "pandas",
+    "geopandas",
+    "asf_search",
+    "hyp3_sdk",
+    "tqdm",
 ]
 dynamic = ["version"]
 
@@ -39,6 +52,10 @@ develop = [
 [project.urls]
 Homepage = "https://github.com/forrestfwilliams/satchip"
 Documentation = "https://github.com/forrestfwilliams/satchip"
+
+[project.scripts]
+chiplabel = "satchip.chip_label:main"
+chipdata = "satchip.chip_data:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -68,13 +85,13 @@ quote-style = "single"
 extend-select = [
     "I",   # isort: https://docs.astral.sh/ruff/rules/#isort-i
     "UP",  # pyupgrade: https://docs.astral.sh/ruff/rules/#pyupgrade-up
-    "D",   # pydocstyle: https://docs.astral.sh/ruff/rules/#pydocstyle-d
+    # "D",   # pydocstyle: https://docs.astral.sh/ruff/rules/#pydocstyle-d
     "ANN", # annotations: https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
     "PTH", # use-pathlib-pth: https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
 ]
 
-[tool.ruff.lint.pydocstyle]
-convention = "google"
+# [tool.ruff.lint.pydocstyle]
+# convention = "google"
 
 [tool.ruff.lint.isort]
 case-sensitive = true
