@@ -1,5 +1,5 @@
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -16,10 +16,18 @@ from satchip.terra_mind_grid import TerraMindGrid
 GET_DATA_FNS = {'S2L2A': get_s2l2a_data, 'S1RTC': get_s1rtc_data}
 
 
-def chip_data(label_path: str, platform: str, output_dir: Path) -> Path:
+def chip_data(label_path: str, platform: str,
+              output_dir: Path, 
+              start_date: datetime | None = None,
+              end_date: datetime | None  = None) -> Path:
     get_data_fn = GET_DATA_FNS[platform]
     labels = utils.load_chip(label_path)
-    date = labels.time.data[0].astype('M8[ms]').astype(datetime)
+
+    if start_date is None:
+        start_date = labels.time.data[0].astype('M8[ms]').astype(datetime)
+    if end_date is None:
+        end_date = start_date + timedelta(weeks=1)
+
     bounds = labels.attrs['bounds']
     grid = TerraMindGrid([bounds[1] - 1, bounds[3] + 1], [bounds[0] - 1, bounds[2] + 1])
     terra_mind_chips = [c for c in grid.terra_mind_chips if c.name in list(labels.sample.data)]
@@ -28,9 +36,9 @@ def chip_data(label_path: str, platform: str, output_dir: Path) -> Path:
     with TemporaryDirectory() as scratch_dir:
         scratch_dir = Path(scratch_dir)
         for chip in tqdm(terra_mind_chips):
-            data_chips.append(get_data_fn(chip, date, scratch_dir))
+            data_chips.append(get_data_fn(chip, start_date, end_date, scratch_dir))
 
-    attrs = {'date_created': date.isoformat(), 'satchip_version': satchip.__version__, 'bounds': labels.attrs['bounds']}
+    attrs = {'date_created': start_date.isoformat(), 'satchip_version': satchip.__version__, 'bounds': labels.attrs['bounds']}
     dataset = xr.Dataset(attrs=attrs)
     # NOTE: may only work when all chips have same date
     dataset['bands'] = xr.concat(data_chips, dim='sample')
@@ -43,16 +51,24 @@ def chip_data(label_path: str, platform: str, output_dir: Path) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description='Chip a label image')
-    parser.add_argument('labelpath', type=str, help='Path to the label image')
-    parser.add_argument('platform', choices=['S2L2A', 'S1RTC'], type=str, help='Dataset to create chips for')
+    parser.add_argument('--labelpath', type=str, help='Path to the label image')
+    parser.add_argument('--platform', choices=['S2L2A', 'S1RTC'], type=str, help='Dataset to create chips for')
     parser.add_argument('--outdir', default='.', type=str, help='Output directory for the chips')
+    
+    parser.add_argument('--start_date', default=None, type=str, help='Start date of search')
+    parser.add_argument('--end_date', default=None, type=str, help='End date of search')
     args = parser.parse_args()
 
     args.labelpath = Path(args.labelpath)
     args.platform = args.platform.upper()
     args.outdir = Path(args.outdir)
 
-    chip_data(args.labelpath, args.platform, args.outdir)
+    if args.start_date is not None:
+        args.start_date = datetime.fromisoformat(args.start_date)
+    if args.end_date is not None:
+        args.end_date = datetime.fromisoformat(args.end_date)
+
+    chip_data(args.labelpath, args.platform, args.outdir, args.start_date, args.end_date)
 
 
 if __name__ == '__main__':
