@@ -20,6 +20,7 @@ dependencies:
   - earthaccess
   - hyp3_sdk
   - tqdm
+  - matplotlib
   # For packaging, and testing
   - setuptools_scm
   - pytest

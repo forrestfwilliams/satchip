@@ -38,6 +38,7 @@ dependencies = [
     "earthaccess",
     "hyp3_sdk",
     "tqdm",
+    "matplotlib",
 ]
 dynamic = ["version"]
 
@@ -57,6 +58,7 @@ Documentation = "https://github.com/forrestfwilliams/satchip"
 [project.scripts]
 chiplabel = "satchip.chip_label:main"
 chipdata = "satchip.chip_data:main"
+chipview = "satchip.chip_view:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -89,7 +89,7 @@ def get_hls_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr.D
     for band in bands:
         image_path = scratch_dir / f'{product_id}.v2.0.{band}.tif'
         da = rioxarray.open_rasterio(image_path).rio.clip_box(*roi_buffered.bounds, crs='EPSG:4326')
-        da['band'] = [band]
+        da['band'] = [bands[band]]
         da_reproj = da.rio.reproject_match(template)
         das.append(da_reproj)
     dataarray = xr.concat(das, dim='band').drop_vars('spatial_ref')
