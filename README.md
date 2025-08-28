@@ -2,7 +2,7 @@
 
 A package for satellite image AI data prep. This package "chips" data labels and satellite imagery into 264x264 image arrays following the TerraMind extension of the MajorTom specification.
 
-## Using
+## Usage
 `SatChip` relies on a two-step process; chip your label train data inputs, then create corresponding chips for different remote sensing data sources.
 
 ### Step 1: Chip labels
@@ -33,7 +33,15 @@ Similarly to step 1, this will produce an output zipped Zarr store that contains
 
 Currently support datasets include:
 - `S2L2A`: Sentinel-2 L2A data sourced from the [Sentinel-2 AWS Open Data Archive](https://registry.opendata.aws/sentinel-2/)
+- `HLS`: Harmonized Landsat Sentinel-2 data sourced from [LP DAAC's Data Archive](https://www.earthdata.nasa.gov/data/projects/hls)
 - `S1RTC`: Sentinel-1 Radiometric Terrain Corrected (RTC) data created using [ASF's HyP3 on-demand platform](https://hyp3-docs.asf.alaska.edu/guides/rtc_product_guide/)
+
+## Viewing Chips
+Assessing chips after their creation can be challenging due to the large number of small images created. To address this issue, SatChip includes a `chipview` CLI tool that uses Matplotlib to quickly visualize the data included within the created zipped Zarr stores:
+```bash
+chipview PATH/TO/CHIPS.zarr.zip BAND --idx IDX
+```
+Where `PATH/TO/CHIPS.zarr.zip` is the path to the chip file (labels or image data), `BAND` is the name of the band you would like to view, and `IDX` is an optional integer index of which dataset you would like to initially view.
 
 ## License
 `SatChip` is licensed under the BSD-3-Clause open source license. See the LICENSE file for more details.
