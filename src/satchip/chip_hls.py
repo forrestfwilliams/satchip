@@ -95,6 +95,8 @@ def get_hls_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr.D
     dataarray = xr.concat(das, dim='band').drop_vars('spatial_ref')
     dataarray['x'] = np.arange(0, chip.ncol)
     dataarray['y'] = np.arange(0, chip.nrow)
-    dataarray = dataarray.expand_dims({'time': [get_date(best_scene['umm']).replace(tzinfo=None)], 'sample': [chip.name]})
+    dataarray = dataarray.expand_dims(
+        {'time': [get_date(best_scene['umm']).replace(tzinfo=None)], 'sample': [chip.name]}
+    )
     dataarray.attrs = {}
     return dataarray
