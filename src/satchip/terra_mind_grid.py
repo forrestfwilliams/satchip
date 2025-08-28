@@ -1,5 +1,6 @@
 from itertools import product
 
+import numpy as np
 import pyproj
 from rasterio import Affine
 
@@ -8,6 +9,10 @@ from satchip.utils import get_epsg4326_bbox, get_epsg4326_point
 
 
 TERRA_MIND_CHIP_SIZE = 264
+TERRA_MIND_PIXEL_SIZE = 10
+MAJOR_TOM_CHIP_SIZE = 1068
+MAJOR_TOM_PIXEL_SIZE = 10
+MJ_TM_RATIO = int(np.floor(MAJOR_TOM_CHIP_SIZE / TERRA_MIND_CHIP_SIZE))
 
 
 class Chip:
@@ -48,7 +53,16 @@ class Chip:
 
 class MajorTomChip(Chip):
     def __init__(self, name: str, minx: float, maxy: float, epsg: int) -> None:
-        super().__init__(name=name, minx=minx, maxy=maxy, xres=10, yres=-10, nrow=1068, ncol=1068, epsg=epsg)
+        super().__init__(
+            name=name,
+            minx=minx,
+            maxy=maxy,
+            xres=MAJOR_TOM_PIXEL_SIZE,
+            yres=-MAJOR_TOM_PIXEL_SIZE,
+            nrow=MAJOR_TOM_CHIP_SIZE,
+            ncol=MAJOR_TOM_CHIP_SIZE,
+            epsg=epsg,
+        )
 
 
 class TerraMindChip(Chip):
@@ -57,8 +71,8 @@ class TerraMindChip(Chip):
             name=name,
             minx=minx,
             maxy=maxy,
-            xres=10,
-            yres=-10,
+            xres=TERRA_MIND_PIXEL_SIZE,
+            yres=-TERRA_MIND_PIXEL_SIZE,
             nrow=TERRA_MIND_CHIP_SIZE,
             ncol=TERRA_MIND_CHIP_SIZE,
             epsg=epsg,
@@ -85,17 +99,22 @@ class TerraMindGrid:
             utm = pyproj.CRS(f'EPSG:{utm_epsg}')
             latlng2utm = pyproj.Transformer.from_crs(latlng, utm, always_xy=True)
             minx, miny = latlng2utm.transform(point.geometry.x, point.geometry.y)
-            maxy = miny + 1068 * 10  # 1068 pixel chip at 10m cell size
+            maxy = miny + MAJOR_TOM_CHIP_SIZE * MAJOR_TOM_PIXEL_SIZE  # 1068 pixel chip at 10m cell size
             major_tom_chips.append(MajorTomChip(name=point['name'], minx=minx, maxy=maxy, epsg=utm_epsg))
         return major_tom_chips
 
     @staticmethod
     def get_terra_mind_chips_for_major_tom_chip(major_tom_chip: MajorTomChip) -> list:
         terra_mind_chips = []
-        for col, row in product(range(0, 4), range(0, 4)):
-            name = f'{major_tom_chip.name}_{col}_{row}'
-            maxy = major_tom_chip.maxy + (row * TERRA_MIND_CHIP_SIZE * major_tom_chip.yres)
-            minx = major_tom_chip.minx + (col * TERRA_MIND_CHIP_SIZE * major_tom_chip.xres)
+        major_tom_center_x = major_tom_chip.minx + major_tom_chip.xres * (major_tom_chip.ncol // 2)
+        major_tom_center_y = major_tom_chip.maxy + major_tom_chip.yres * (major_tom_chip.nrow // 2)
+        assert MJ_TM_RATIO % 2 == 0
+        half_width = MJ_TM_RATIO // 2
+        index_range = np.arange(-half_width, half_width).astype(int)
+        for col, row in product(index_range, index_range):
+            name = f'{major_tom_chip.name}_{col + half_width}_{row + half_width}'
+            maxy = major_tom_center_y + (row * major_tom_chip.yres * TERRA_MIND_CHIP_SIZE)
+            minx = major_tom_center_x + (col * major_tom_chip.xres * TERRA_MIND_CHIP_SIZE)
             terra_mind_chip = TerraMindChip(name=name, minx=minx, maxy=maxy, epsg=major_tom_chip.epsg)
             terra_mind_chips.append(terra_mind_chip)
         return terra_mind_chips
