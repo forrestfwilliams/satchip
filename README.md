@@ -38,19 +38,19 @@ Currently support datasets include:
 
 ## Tiling Schema
 
-This package chips image based on the [TerraMesh](https://huggingface.co/datasets/ibm-esa-geospatial/TerraMesh), which builds on the [MajorTOM grid system](https://github.com/ESA-PhiLab/Major-TOM).
+This package chips images based on the [TerraMesh grid system](https://huggingface.co/datasets/ibm-esa-geospatial/TerraMesh), which builds on the [MajorTOM grid system](https://github.com/ESA-PhiLab/Major-TOM).
 
-The MajorTOM grid system provides a global set of fixed image grids that are 1068 × 1068 pixel in size. A MajorTOM grid can be defined for any tile size, but we fix the grid 10x10 Km tiles. Tiles are named using the format:
+The MajorTOM grid system provides a global set of fixed image grids that are 1068x1068 pixels in size. A MajorTOM grid can be defined for any tile size, but we fix the grid to 10x10 Km tiles. Tiles are named using the format:
 ```
 ROW[U|D]_COL[L|R]
 ```
 Where, `ROW` is indexed from the equator, with a suffix `U` (up) for tiles north of the equator and `D` (down) for tiles south of it, and `COL` is indexed from the prime meridian, with a suffix `L` (left) for tiles east of the prime meridian and `R` (right) for tiles west of it.
 
-To support finer subdivision the TerraMesh grid system divides each MajorTOM grid into a a 4x4 set of sub-tiles, each 264x264 pixels. The subgrid is centered within the parent tile, leaving a 6-pixel border around each sub-tile. Subgrid names extend the base format with two additional indices:
+To support finer subdivisions, the TerraMesh grid system divides each MajorTOM grid into a 4x4 set of sub-tiles, each 264x264 pixels. The subgrid is centered within the parent tile, leaving a 6-pixel border around each sub-tile. Subgrid names extend the base format with two additional indices:
 ```
 ROW[U|D]_COL[L|R]_SUBCOL_SUBROW
 ```
-For instance, the bottom-left subgrid of tile `434U_876L` is named `434U_876L_0_3`. See the figure below for a visual description:
+For instance, the bottom-left subgrid of MajorTOM tile `434U_876L` is named `434U_876L_0_3`. See the figure below for a visual description:
 
 ![TerraMesh tiling schema](assets/satchip_schema.svg)
 
