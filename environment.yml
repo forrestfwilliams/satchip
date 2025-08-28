@@ -1,4 +1,4 @@
-name: satchip2
+name: satchip
 channels:
   - conda-forge
   - nodefaults
