@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -27,14 +27,13 @@ S2_BANDS = {
 }
 
 
-def get_s2l2a_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr.DataArray:
+def get_s2l2a_data(chip: TerraMindChip, start_date: datetime, end_date: datetime, scratch_dir: Path) -> xr.DataArray:
     """Returns XArray DataArray of Sentinel-2 L2A image for the given bounds and
     closest collection after date.
 
     If multiple images are available, the one with the most coverage is returned.
     """
-    date_end = date + timedelta(weeks=1)
-    date_range = f'{datetime.strftime(date, "%Y-%m-%d")}/{datetime.strftime(date_end, "%Y-%m-%d")}'
+    date_range = f'{datetime.strftime(start_date, "%Y-%m-%d")}/{datetime.strftime(end_date, "%Y-%m-%d")}'
     roi = shapely.box(*chip.bounds)
     client = Client.open('https://earth-search.aws.element84.com/v1')
     search = client.search(

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import asf_search as search
@@ -36,7 +36,7 @@ def get_hyp3_rtc(scene_name: str, scratch_dir: Path) -> tuple[Path, Path]:
     if not job.succeeded():
         hyp3.watch(job)
 
-    output_path = scratch_dir / jobs[0].to_dict()['files'][0]['filename']
+    output_path = scratch_dir / job.to_dict()['files'][0]['filename']
     output_dir = output_path.with_suffix('')
     output_zip = output_path.with_suffix('.zip')
     if not output_dir.exists():
@@ -47,19 +47,19 @@ def get_hyp3_rtc(scene_name: str, scratch_dir: Path) -> tuple[Path, Path]:
     return vv_path, vh_path
 
 
-def get_s1rtc_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr.DataArray:
+def get_s1rtc_data(chip: TerraMindChip, start_date: datetime, end_date: datetime, scratch_dir: Path) -> xr.DataArray:
     roi = shapely.box(*chip.bounds)
     search_results = search.geo_search(
         intersectsWith=roi.wkt,
-        start=date,
-        end=date + timedelta(weeks=2),
+        start=start_date,
+        end=end_date,
         beamMode=constants.BEAMMODE.IW,
         polarization=constants.POLARIZATION.VV_VH,
         platform=constants.PLATFORM.SENTINEL1,
         processingLevel=constants.PRODUCT_TYPE.SLC,
     )
     if len(search_results) == 0:
-        raise ValueError(f'No products found for chip {chip.name} on {date}')
+        raise ValueError(f'No products found for chip {chip.name} between {start_date} {end_date}')
     product = sorted(list(search_results), key=lambda x: sort_products(x, roi))[0]
     scene_name = product.properties['sceneName']
     vv_path, vh_path = get_hyp3_rtc(scene_name, scratch_dir)

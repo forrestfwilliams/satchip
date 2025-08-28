@@ -27,7 +27,12 @@ def is_valuable(chip: np.ndarray) -> bool:
 
 def chip_labels(label_path: Path, date: datetime, output_dir: Path) -> Path:
     label = xr.open_dataarray(label_path)
-    bbox = utils.get_epsg4326_bbox(label.rio.bounds(), label.rio.crs.to_epsg())
+    crs = label.rio.crs.to_epsg()
+
+    if crs is None:
+      raise ValueError(f"Tif file {label_path} does not have crs metadata")
+    
+    bbox = utils.get_epsg4326_bbox(label.rio.bounds(), crs)
     tm_grid = TerraMindGrid(latitude_range=(bbox[1], bbox[3]), longitude_range=(bbox[0], bbox[2]))
     chips = {}
     for tm_chip in tqdm(tm_grid.terra_mind_chips):
@@ -62,6 +67,7 @@ def chip_labels(label_path: Path, date: datetime, output_dir: Path) -> Path:
     dataset['bands'] = xr.DataArray(label_np, coords=coords, dims=list(coords.keys()))
     dataset['lats'] = xr.DataArray(np.array(lats), coords={'sample': coords['sample']}, dims=['sample'])
     dataset['lons'] = xr.DataArray(np.array(lons), coords={'sample': coords['sample']}, dims=['sample'])
+    
     output_path = output_dir / label_path.with_suffix('.zarr.zip').name
     utils.save_chip(dataset, output_path)
     return output_path
@@ -69,8 +75,8 @@ def chip_labels(label_path: Path, date: datetime, output_dir: Path) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description='Chip a label image')
-    parser.add_argument('labelpath', type=str, help='Path to the label image')
-    parser.add_argument('date', type=str, help='Date and time of the image in ISO format (YYYY-MM-DDTHH:MM:SS)')
+    parser.add_argument('--labelpath', type=str, help='Path to the label image')
+    parser.add_argument('--date', type=str, help='Date and time of the image in ISO format (YYYY-MM-DDTHH:MM:SS)')
     parser.add_argument('--outdir', default='.', type=str, help='Output directory for the chips')
     args = parser.parse_args()
     args.labelpath = Path(args.labelpath)
