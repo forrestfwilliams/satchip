@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - python>=3.10
+  - python>=3.11
   - pip
   - gdal
   - numpy
@@ -11,14 +11,16 @@ dependencies:
   - pyproj
   - pystac-client
   - rasterio
-  - zarr
+  - zarr>=3
   - xarray
   - rioxarray
   - pandas
   - geopandas
   - asf_search
+  - earthaccess
   - hyp3_sdk
   - tqdm
+  - matplotlib
   # For packaging, and testing
   - setuptools_scm
   - pytest

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "satchip"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     {name="forrestfwilliams", email="ffwilliams2@alaska.edu"},
 ]
@@ -29,14 +29,16 @@ dependencies = [
     "pyproj",
     "pystac-client",
     "rasterio",
-    "zarr",
+    "zarr>=3",
     "xarray",
     "rioxarray",
     "pandas",
     "geopandas",
     "asf_search",
+    "earthaccess",
     "hyp3_sdk",
     "tqdm",
+    "matplotlib",
 ]
 dynamic = ["version"]
 
@@ -56,6 +58,7 @@ Documentation = "https://github.com/forrestfwilliams/satchip"
 [project.scripts]
 chiplabel = "satchip.chip_label:main"
 chipdata = "satchip.chip_data:main"
+chipview = "satchip.chip_view:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
