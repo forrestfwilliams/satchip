@@ -84,9 +84,7 @@ def get_pct_intersect(scene_geom: dict | None, roi: shapely.geometry.Polygon) ->
     return intersection.area / roi.area
 
 
-def get_best_scene(
-    items: list[Item], roi: shapely.geometry.Polygon, scratch_dir: Path, max_cloud_pct: int = 10
-) -> Item:
+def get_best_scene(items: list[Item], roi: shapely.geometry.Polygon, max_cloud_pct: int, scratch_dir: Path) -> Item:
     """Returns the best Sentinel-2 L2A scene from the given list of items.
     The best scene is defined as the earliest scene with the largest intersection with the roi and
     less than or equal to the max_cloud_pct of bad pixels (nodata, defective, cloud).
@@ -94,8 +92,8 @@ def get_best_scene(
     Args:
         items: List of Sentinel-2 L2A items.
         roi: Region of interest polygon.
-        scratch_dir: Directory to store downloaded files.
         max_cloud_pct: Maximum percent of bad pixels allowed in the scene.
+        scratch_dir: Directory to store downloaded files.
 
     Returns:
         The best Sentinel-2 L2A item.
@@ -112,25 +110,26 @@ def get_best_scene(
         scl_href = item.assets['scl'].href
         local_path = url_to_localpath(scl_href, scratch_dir)
         assert local_path.exists(), f'File not found: {local_path}'
-        scl_da = rioxarray.open_rasterio(local_path).rio.clip_box(*roi.bounds, crs='EPSG:4326') # type: ignore
+        scl_da = rioxarray.open_rasterio(local_path).rio.clip_box(*roi.bounds, crs='EPSG:4326')  # type: ignore
         scl_array = scl_da.data[0]
-        # Looks for nodata (0), defective pixels (1), cloud medium/high probability (8/9)
+        # Looks for nodata (0), defective pixels (1), cloud medium/high probability (8/9), thin cirrsu (10)
         # See https://custom-scripts.sentinel-hub.com/custom-scripts/sentinel-2/scene-classification/
         # for details on SCL values
-        bad_pixels = np.isin(scl_array, [0, 1, 8, 9])
+        bad_pixels = np.isin(scl_array, [0, 1, 8, 9, 10])
         pct_bad = int(np.round(np.sum(bad_pixels) / bad_pixels.size * 100))
         if pct_bad <= max_cloud_pct:
             return item
     raise ValueError(f'No Sentinel-2 L2A scenes found with <= {max_cloud_pct}% cloud cover for chip.')
 
 
-def get_s2l2a_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr.DataArray:
+def get_s2l2a_data(chip: TerraMindChip, date: datetime, scratch_dir: Path, opts:dict) -> xr.DataArray:
     """Get XArray DataArray of Sentinel-2 L2A image for the given bounds and best collection parameters.
 
     Args:
         chip: TerraMindChip object defining the area of interest.
         date: Date to search for the closest Sentinel-2 L2A image.
         scratch_dir: Directory to store downloaded files.
+        opts: Additional options
 
     Returns:
         XArray DataArray containing the Sentinel-2 L2A image data.
@@ -147,20 +146,21 @@ def get_s2l2a_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr
         max_items=50,
     )
     items = list(search.item_collection())
-    item = get_best_scene(items, roi, scratch_dir)
+    max_cloud_pct = opts.get('max_cloud_pct', 100)
+    item = get_best_scene(items, roi, max_cloud_pct, scratch_dir)
     multithread_fetch_s3_file([item.assets[S2_BANDS[band]].href for band in S2_BANDS], scratch_dir)
     template = create_template_da(chip)
     das = []
     for band in S2_BANDS:
         local_path = url_to_localpath(item.assets[S2_BANDS[band]].href, scratch_dir)
         assert local_path.exists(), f'File not found: {local_path}'
-        da = rioxarray.open_rasterio(local_path).rio.clip_box(*roi_buffered.bounds, crs='EPSG:4326') # type: ignore
+        da = rioxarray.open_rasterio(local_path).rio.clip_box(*roi_buffered.bounds, crs='EPSG:4326')  # type: ignore
         da['band'] = [band]
         da_reproj = da.rio.reproject_match(template)
         das.append(da_reproj)
     dataarray = xr.concat(das, dim='band').drop_vars('spatial_ref')
     dataarray['x'] = np.arange(0, chip.ncol)
     dataarray['y'] = np.arange(0, chip.nrow)
-    dataarray = dataarray.expand_dims({'time': [item.datetime.replace(tzinfo=None)], 'sample': [chip.name]}) # type: ignore
+    dataarray = dataarray.expand_dims({'time': [item.datetime.replace(tzinfo=None)], 'sample': [chip.name]})  # type: ignore
     dataarray.attrs = {}
     return dataarray

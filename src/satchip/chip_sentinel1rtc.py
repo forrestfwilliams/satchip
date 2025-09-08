@@ -47,7 +47,7 @@ def get_hyp3_rtc(scene_name: str, scratch_dir: Path) -> tuple[Path, Path]:
     return vv_path, vh_path
 
 
-def get_s1rtc_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr.DataArray:
+def get_s1rtc_data(chip: TerraMindChip, date: datetime, scratch_dir: Path, opts: dict) -> xr.DataArray:
     roi = shapely.box(*chip.bounds)
     search_results = search.geo_search(
         intersectsWith=roi.wkt,

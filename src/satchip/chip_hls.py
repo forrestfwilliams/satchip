@@ -53,7 +53,7 @@ def get_product_id(umm: dict) -> str:
     return [x['Identifier'] for x in umm['DataGranule']['Identifiers'] if x['IdentifierType'] == 'ProducerGranuleId'][0]
 
 
-def get_hls_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr.DataArray:
+def get_hls_data(chip: TerraMindChip, date: datetime, scratch_dir: Path, opts: dict) -> xr.DataArray:
     """Returns XArray DataArray of a Harmonized Landsat Sentinel-2 image for the given bounds and
     closest collection after date.
 
@@ -88,13 +88,15 @@ def get_hls_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr.D
     bands = BAND_SETS[product_id.split('.')[1]]
     for band in bands:
         image_path = scratch_dir / f'{product_id}.v2.0.{band}.tif'
-        da = rioxarray.open_rasterio(image_path).rio.clip_box(*roi_buffered.bounds, crs='EPSG:4326')
+        da = rioxarray.open_rasterio(image_path).rio.clip_box(*roi_buffered.bounds, crs='EPSG:4326')  # type: ignore
         da['band'] = [bands[band]]
         da_reproj = da.rio.reproject_match(template)
         das.append(da_reproj)
     dataarray = xr.concat(das, dim='band').drop_vars('spatial_ref')
     dataarray['x'] = np.arange(0, chip.ncol)
     dataarray['y'] = np.arange(0, chip.nrow)
-    dataarray = dataarray.expand_dims({'time': [get_date(best_scene['umm']).replace(tzinfo=None)], 'sample': [chip.name]})
+    dataarray = dataarray.expand_dims(
+        {'time': [get_date(best_scene['umm']).replace(tzinfo=None)], 'sample': [chip.name]}
+    )
     dataarray.attrs = {}
     return dataarray
