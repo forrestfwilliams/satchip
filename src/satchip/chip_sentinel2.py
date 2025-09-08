@@ -8,6 +8,7 @@ import rioxarray
 import s3fs
 import shapely
 import xarray as xr
+from pystac.item import Item
 from pystac_client import Client
 
 from satchip.chip_xr_base import create_template_da
@@ -70,6 +71,43 @@ def multithread_fetch_s3_file(urls: list[str], scratch_dir: Path, max_workers: i
         executor.map(S3_FS.get, s3_paths, download_paths)
 
 
+def get_pct_intersect(scene_geom: dict | None, roi: shapely.geometry.Polygon) -> float:
+    if scene_geom is None:
+        return 0.0
+    image_footprint = shapely.geometry.shape(scene_geom)
+    intersection = roi.intersection(image_footprint)
+    return intersection.area / roi.area
+
+
+def get_best_scene(
+    items: list[Item], roi: shapely.geometry.Polygon, scratch_dir: Path, max_cloud_pct: int = 10
+) -> Item:
+    assert len(items) > 0, 'No Sentinel-2 L2A scenes found for chip.'
+    best_first = sorted(
+        items,
+        key=lambda x: (
+            -get_pct_intersect(x.geometry, roi),  # negative for largest intersect first
+            x.datetime,  # earliest date first
+        ),
+    )
+    for item in best_first:
+        scl_href = item.assets['scl'].href
+        local_path = url_to_localpath(scl_href, scratch_dir)
+        if not local_path.exists():
+            fetch_s3_file(scl_href, scratch_dir)
+        assert local_path.exists(), f'File not found: {local_path}'
+        scl_da = rioxarray.open_rasterio(local_path).rio.clip_box(*roi.bounds, crs='EPSG:4326') # type: ignore
+        scl_array = scl_da.data[0]
+        # Looks for nodata (0), defective pixels (1), cloud medium/high probability (8/9)
+        # See https://custom-scripts.sentinel-hub.com/custom-scripts/sentinel-2/scene-classification/
+        # for details on SCL values
+        bad_pixels = np.isin(scl_array, [0, 1, 8, 9])
+        pct_bad = int(np.round(np.sum(bad_pixels) / bad_pixels.size * 100))
+        if pct_bad <= max_cloud_pct:
+            return item
+    raise ValueError(f'No Sentinel-2 L2A scenes found with <= {max_cloud_pct}% cloud cover for chip.')
+
+
 def get_s2l2a_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr.DataArray:
     """Returns XArray DataArray of Sentinel-2 L2A image for the given bounds and
     closest collection after date.
@@ -79,6 +117,7 @@ def get_s2l2a_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr
     date_end = date + timedelta(weeks=1)
     date_range = f'{datetime.strftime(date, "%Y-%m-%d")}/{datetime.strftime(date_end, "%Y-%m-%d")}'
     roi = shapely.box(*chip.bounds)
+    roi_buffered = roi.buffer(0.01)
     client = Client.open('https://earth-search.aws.element84.com/v1')
     search = client.search(
         collections=['sentinel-2-l2a'],
@@ -87,27 +126,20 @@ def get_s2l2a_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr
         max_items=50,
     )
     items = list(search.item_collection())
-    items.sort(key=lambda x: x.datetime)
-    coverage = []
-    for item in search.item_collection():
-        image_footprint = shapely.geometry.shape(item.geometry)
-        intersection = roi.intersection(image_footprint)
-        coverage.append(intersection.area / roi.area)
-    item = items[coverage.index(max(coverage))]
-    roi_buffered = roi.buffer(0.1)
+    item = get_best_scene(items, roi, scratch_dir)
     multithread_fetch_s3_file([item.assets[S2_BANDS[band]].href for band in S2_BANDS], scratch_dir)
     template = create_template_da(chip)
     das = []
     for band in S2_BANDS:
         local_path = url_to_localpath(item.assets[S2_BANDS[band]].href, scratch_dir)
         assert local_path.exists(), f'File not found: {local_path}'
-        da = rioxarray.open_rasterio(local_path).rio.clip_box(*roi_buffered.bounds, crs='EPSG:4326')
+        da = rioxarray.open_rasterio(local_path).rio.clip_box(*roi_buffered.bounds, crs='EPSG:4326') # type: ignore
         da['band'] = [band]
         da_reproj = da.rio.reproject_match(template)
         das.append(da_reproj)
     dataarray = xr.concat(das, dim='band').drop_vars('spatial_ref')
     dataarray['x'] = np.arange(0, chip.ncol)
     dataarray['y'] = np.arange(0, chip.nrow)
-    dataarray = dataarray.expand_dims({'time': [item.datetime.replace(tzinfo=None)], 'sample': [chip.name]})
+    dataarray = dataarray.expand_dims({'time': [item.datetime.replace(tzinfo=None)], 'sample': [chip.name]}) # type: ignore
     dataarray.attrs = {}
     return dataarray
