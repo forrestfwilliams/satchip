@@ -34,6 +34,7 @@ S3_FS = s3fs.S3FileSystem(anon=True)
 
 
 def url_to_s3path(url: str) -> str:
+    """Converts an S3 URL to an S3 path usable by s3fs."""
     parsed = urlparse(url)
     netloc_parts = parsed.netloc.split('.')
     if 's3' in netloc_parts:
@@ -45,6 +46,7 @@ def url_to_s3path(url: str) -> str:
 
 
 def url_to_localpath(url: str, scratch_dir: Path) -> Path:
+    """Converts an S3 URL to a local file path in the given scratch directory."""
     parsed = urlparse(url)
     name = '_'.join(parsed.path.lstrip('/').split('/')[-2:])
     local_file_path = scratch_dir / name
@@ -52,6 +54,7 @@ def url_to_localpath(url: str, scratch_dir: Path) -> Path:
 
 
 def fetch_s3_file(url: str, scratch_dir: Path) -> Path:
+    """Fetches an S3 file to the given scratch directory if it doesn't already exist."""
     local_path = url_to_localpath(url, scratch_dir)
     if not local_path.exists():
         s3_path = url_to_s3path(url)
@@ -60,6 +63,7 @@ def fetch_s3_file(url: str, scratch_dir: Path) -> Path:
 
 
 def multithread_fetch_s3_file(urls: list[str], scratch_dir: Path, max_workers: int = 8) -> None:
+    """Fetches multiple S3 files to the given scratch directory using multithreading."""
     s3_paths, download_paths = [], []
     for url in urls:
         local_path = url_to_localpath(url, scratch_dir)
@@ -72,6 +76,7 @@ def multithread_fetch_s3_file(urls: list[str], scratch_dir: Path, max_workers: i
 
 
 def get_pct_intersect(scene_geom: dict | None, roi: shapely.geometry.Polygon) -> float:
+    """Returns the percent of the roi polygon that intersects with the scene geometry."""
     if scene_geom is None:
         return 0.0
     image_footprint = shapely.geometry.shape(scene_geom)
@@ -82,6 +87,19 @@ def get_pct_intersect(scene_geom: dict | None, roi: shapely.geometry.Polygon) ->
 def get_best_scene(
     items: list[Item], roi: shapely.geometry.Polygon, scratch_dir: Path, max_cloud_pct: int = 10
 ) -> Item:
+    """Returns the best Sentinel-2 L2A scene from the given list of items.
+    The best scene is defined as the earliest scene with the largest intersection with the roi and
+    less than or equal to the max_cloud_pct of bad pixels (nodata, defective, cloud).
+
+    Args:
+        items: List of Sentinel-2 L2A items.
+        roi: Region of interest polygon.
+        scratch_dir: Directory to store downloaded files.
+        max_cloud_pct: Maximum percent of bad pixels allowed in the scene.
+
+    Returns:
+        The best Sentinel-2 L2A item.
+    """
     assert len(items) > 0, 'No Sentinel-2 L2A scenes found for chip.'
     best_first = sorted(
         items,
@@ -93,8 +111,6 @@ def get_best_scene(
     for item in best_first:
         scl_href = item.assets['scl'].href
         local_path = url_to_localpath(scl_href, scratch_dir)
-        if not local_path.exists():
-            fetch_s3_file(scl_href, scratch_dir)
         assert local_path.exists(), f'File not found: {local_path}'
         scl_da = rioxarray.open_rasterio(local_path).rio.clip_box(*roi.bounds, crs='EPSG:4326') # type: ignore
         scl_array = scl_da.data[0]
@@ -109,10 +125,15 @@ def get_best_scene(
 
 
 def get_s2l2a_data(chip: TerraMindChip, date: datetime, scratch_dir: Path) -> xr.DataArray:
-    """Returns XArray DataArray of Sentinel-2 L2A image for the given bounds and
-    closest collection after date.
+    """Get XArray DataArray of Sentinel-2 L2A image for the given bounds and best collection parameters.
 
-    If multiple images are available, the one with the most coverage is returned.
+    Args:
+        chip: TerraMindChip object defining the area of interest.
+        date: Date to search for the closest Sentinel-2 L2A image.
+        scratch_dir: Directory to store downloaded files.
+
+    Returns:
+        XArray DataArray containing the Sentinel-2 L2A image data.
     """
     date_end = date + timedelta(weeks=1)
     date_range = f'{datetime.strftime(date, "%Y-%m-%d")}/{datetime.strftime(date_end, "%Y-%m-%d")}'
