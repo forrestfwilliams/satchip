@@ -112,10 +112,10 @@ def get_best_scene(items: list[Item], roi: shapely.geometry.Polygon, max_cloud_p
         assert local_path.exists(), f'File not found: {local_path}'
         scl_da = rioxarray.open_rasterio(local_path).rio.clip_box(*roi.bounds, crs='EPSG:4326')  # type: ignore
         scl_array = scl_da.data[0]
-        # Looks for nodata (0), defective pixels (1), cloud medium/high probability (8/9), thin cirrsu (10)
+        # Looks for nodata (0), defective pixels (1), cloud shadows (3), clouds (8/9), cirrus (10)
         # See https://custom-scripts.sentinel-hub.com/custom-scripts/sentinel-2/scene-classification/
         # for details on SCL values
-        bad_pixels = np.isin(scl_array, [0, 1, 8, 9, 10])
+        bad_pixels = np.isin(scl_array, [0, 1, 3, 8, 9, 10])
         pct_bad = int(np.round(np.sum(bad_pixels) / bad_pixels.size * 100))
         if pct_bad <= max_cloud_pct:
             return item

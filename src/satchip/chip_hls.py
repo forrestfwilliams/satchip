@@ -6,6 +6,7 @@ import numpy as np
 import rioxarray
 import shapely
 import xarray as xr
+from earthaccess.results import DataGranule
 
 from satchip.chip_xr_base import create_template_da
 from satchip.terra_mind_grid import TerraMindChip
@@ -32,10 +33,6 @@ HLS_S_BANDS = {
 BAND_SETS = {'L30': HLS_L_BANDS, 'S30': HLS_S_BANDS}
 
 
-def get_pct_cloud(umm: dict) -> float:
-    return [float(x['Values'][0]) for x in umm['AdditionalAttributes'] if x['Name'] == 'CLOUD_COVERAGE'][0]
-
-
 def get_pct_intersect(umm: dict, roi: shapely.geometry.Polygon) -> float:
     points = umm['SpatialExtent']['HorizontalSpatialDomain']['Geometry']['GPolygons'][0]['Boundary']['Points']
     coords = [(pt['Longitude'], pt['Latitude']) for pt in points]
@@ -44,13 +41,55 @@ def get_pct_intersect(umm: dict, roi: shapely.geometry.Polygon) -> float:
 
 
 def get_date(umm: dict) -> datetime:
-    date_fmt = '%Y-%m-%dT%H:%M:%S.%fZ'
-    date = [x['Values'][0] for x in umm['AdditionalAttributes'] if x['Name'] == 'SENSING_TIME'][0]
+    date_fmt = '%Y-%m-%dT%H:%M:%S'
+    date = [x['Values'][0].split('.')[0] for x in umm['AdditionalAttributes'] if x['Name'] == 'SENSING_TIME'][0]
     return datetime.strptime(date, date_fmt)
 
 
 def get_product_id(umm: dict) -> str:
     return [x['Identifier'] for x in umm['DataGranule']['Identifiers'] if x['IdentifierType'] == 'ProducerGranuleId'][0]
+
+
+def get_best_scene(
+    items: list[DataGranule], roi: shapely.geometry.Polygon, max_cloud_pct: int, scratch_dir: Path
+) -> DataGranule:
+    """Returns the best HLS scene from the given list of items.
+    The best scene is defined as the earliest scene with the largest intersection with the roi and
+    less than or equal to the max_cloud_pct.
+
+    Args:
+        items: List of HLS earthaccess result items.
+        roi: Region of interest polygon.
+        max_cloud_pct: Maximum percent of bad pixels allowed in the scene.
+        scratch_dir: Directory to store downloaded files.
+
+    Returns:
+        The best HLS item.
+    """
+    assert len(items) > 0, 'No HLS scenes found for chip.'
+    best_first = sorted(
+        items,
+        key=lambda x: (
+            -get_pct_intersect(x['umm'], roi),  # negative for largest intersect first
+            get_date(x['umm']),  # earliest date first
+        ),
+    )
+    for item in best_first:
+        product_id = get_product_id(item['umm'])
+        n_products = len(list(scratch_dir.glob(f'{product_id}*')))
+        if n_products < 15:
+            earthaccess.download([item], scratch_dir, pqdm_kwargs={'disable': True})
+        fmask_path = scratch_dir / f'{product_id}.v2.0.FMask.tif'
+        assert fmask_path.exists(), f'File not found: {fmask_path}'
+        qual_da = rioxarray.open_rasterio(fmask_path).rio.clip_box(*roi.bounds, crs='EPSG:4326')  # type: ignore
+        bit_masks = np.unpackbits(qual_da.data[0][..., np.newaxis], axis=-1)
+        # Looks for a 1 in the 4th, 6th and 7th bit of the Fmask (reverse order). See table 9 and appendix A of:
+        # https://lpdaac.usgs.gov/documents/1698/HLS_User_Guide_V2.pdf
+        bad_pixels = (bit_masks[..., 4] == 1) | (bit_masks[..., 6] == 1) | (bit_masks[..., 7] == 1)
+        pct_bad = int(np.round(100 * np.sum(bad_pixels) / bad_pixels.size))
+        if pct_bad <= max_cloud_pct:
+            return item
+    raise ValueError(f'No HLS scenes found with <= {max_cloud_pct}% cloud cover for chip.')
 
 
 def get_hls_data(chip: TerraMindChip, date: datetime, scratch_dir: Path, opts: dict) -> xr.DataArray:
@@ -66,23 +105,14 @@ def get_hls_data(chip: TerraMindChip, date: datetime, scratch_dir: Path, opts: d
     results = earthaccess.search_data(
         short_name=['HLSL30', 'HLSS30'], bounding_box=chip.bounds, temporal=(date_start, date_end)
     )
-    few_clouds = [x for x in results if get_pct_cloud(x['umm']) <= 25]
-    if len(few_clouds) == 0:
-        raise ValueError('No HLS scenes found with <= 25% cloud cover for dataset.')
     roi = shapely.box(*chip.bounds)
-    roi_buffered = roi.buffer(0.1)
-    few_clouds = sorted(
-        few_clouds,
-        key=lambda x: (
-            -get_pct_intersect(x['umm'], roi),  # negative for largest intersect first
-            get_date(x['umm']),  # earliest date first
-        ),
-    )
-    best_scene = few_clouds[0]
+    roi_buffered = roi.buffer(0.01)
+    max_cloud_pct = opts.get('max_cloud_pct', 100)
+    best_scene = get_best_scene(results, roi, max_cloud_pct, scratch_dir)
     product_id = get_product_id(best_scene['umm'])
     n_products = len(list(scratch_dir.glob(f'{product_id}*')))
-    if n_products < 18:
-        earthaccess.download([best_scene], scratch_dir)
+    if n_products < 15:
+        earthaccess.download([best_scene], scratch_dir, pqdm_kwargs={'disable': True})
     das = []
     template = create_template_da(chip)
     bands = BAND_SETS[product_id.split('.')[1]]
