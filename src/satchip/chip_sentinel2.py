@@ -84,7 +84,9 @@ def get_pct_intersect(scene_geom: dict | None, roi: shapely.geometry.Polygon) ->
     return intersection.area / roi.area
 
 
-def get_best_scene(items: list[Item], roi: shapely.geometry.Polygon, max_cloud_pct: int, scratch_dir: Path) -> Item:
+def get_scenes(
+    items: list[Item], roi: shapely.geometry.Polygon, strategy: str, max_cloud_pct: int, scratch_dir: Path
+) -> list[Item]:
     """Returns the best Sentinel-2 L2A scene from the given list of items.
     The best scene is defined as the earliest scene with the largest intersection with the roi and
     less than or equal to the max_cloud_pct of bad pixels (nodata, defective, cloud).
@@ -98,17 +100,15 @@ def get_best_scene(items: list[Item], roi: shapely.geometry.Polygon, max_cloud_p
     Returns:
         The best Sentinel-2 L2A item.
     """
+    strategy = strategy.upper()
+    assert strategy in ['BEST', 'ALL'], f'Invalid strategy: {strategy}'
     assert len(items) > 0, 'No Sentinel-2 L2A scenes found for chip.'
-    best_first = sorted(
-        items,
-        key=lambda x: (
-            -get_pct_intersect(x.geometry, roi),  # negative for largest intersect first
-            x.datetime,  # earliest date first
-        ),
-    )
+    items = [item for item in items if get_pct_intersect(item.geometry, roi) > 0.95]
+    best_first = sorted(items, key=lambda x: (-get_pct_intersect(x.geometry, roi), x.datetime))
+    valid_scenes = []
     for item in best_first:
         scl_href = item.assets['scl'].href
-        local_path = url_to_localpath(scl_href, scratch_dir)
+        local_path = fetch_s3_file(scl_href, scratch_dir)
         assert local_path.exists(), f'File not found: {local_path}'
         scl_da = rioxarray.open_rasterio(local_path).rio.clip_box(*roi.bounds, crs='EPSG:4326')  # type: ignore
         scl_array = scl_da.data[0]
@@ -118,7 +118,12 @@ def get_best_scene(items: list[Item], roi: shapely.geometry.Polygon, max_cloud_p
         bad_pixels = np.isin(scl_array, [0, 1, 3, 8, 9, 10])
         pct_bad = int(np.round(np.sum(bad_pixels) / bad_pixels.size * 100))
         if pct_bad <= max_cloud_pct:
-            return item
+            if strategy == 'BEST':
+                return [item]
+            else:
+                valid_scenes.append(item)
+    if strategy == 'ALL':
+        return valid_scenes
     raise ValueError(f'No Sentinel-2 L2A scenes found with <= {max_cloud_pct}% cloud cover for chip.')
 
 
@@ -147,24 +152,29 @@ def get_s2l2a_data(chip: TerraMindChip, scratch_dir: Path, opts: dict) -> xr.Dat
         collections=['sentinel-2-l2a'],
         intersects=roi,
         datetime=date_range,
-        max_items=50,
+        max_items=1000,
     )
     items = list(search.item_collection())
     max_cloud_pct = opts.get('max_cloud_pct', 100)
-    item = get_best_scene(items, roi, max_cloud_pct, scratch_dir)
-    multithread_fetch_s3_file([item.assets[S2_BANDS[band]].href for band in S2_BANDS], scratch_dir)
+    strategy = opts.get('strategy', 'BEST')
+    items = get_scenes(items, roi, strategy, max_cloud_pct, scratch_dir)
+    urls = [item.assets[S2_BANDS[band]].href for item in items for band in S2_BANDS]
+    multithread_fetch_s3_file(urls, scratch_dir)
     template = create_template_da(chip)
     das = []
-    for band in S2_BANDS:
-        local_path = url_to_localpath(item.assets[S2_BANDS[band]].href, scratch_dir)
-        assert local_path.exists(), f'File not found: {local_path}'
-        da = rioxarray.open_rasterio(local_path).rio.clip_box(*roi_buffered.bounds, crs='EPSG:4326')  # type: ignore
-        da['band'] = [band]
-        da_reproj = da.rio.reproject_match(template)
-        das.append(da_reproj)
-    dataarray = xr.concat(das, dim='band').drop_vars('spatial_ref')
-    dataarray['x'] = np.arange(0, chip.ncol)
-    dataarray['y'] = np.arange(0, chip.nrow)
-    dataarray = dataarray.expand_dims({'time': [item.datetime.replace(tzinfo=None)], 'sample': [chip.name]})  # type: ignore
+    for item in items:
+        for band in S2_BANDS:
+            local_path = url_to_localpath(item.assets[S2_BANDS[band]].href, scratch_dir)
+            assert local_path.exists(), f'File not found: {local_path}'
+            da = rioxarray.open_rasterio(local_path).rio.clip_box(*roi_buffered.bounds, crs='EPSG:4326')  # type: ignore
+            da_reproj = da.rio.reproject_match(template)
+            da_reproj['band'] = [S2_BANDS[band]]
+            da_reproj = da_reproj.expand_dims({'time': [item.datetime.replace(tzinfo=None)]})  # type: ignore
+            da_reproj['x'] = np.arange(0, chip.ncol)
+            da_reproj['y'] = np.arange(0, chip.nrow)
+            das.append(da_reproj)
+    dataarray = xr.combine_by_coords(das, join='override').drop_vars('spatial_ref')
+    assert isinstance(dataarray, xr.DataArray)
+    dataarray = dataarray.expand_dims({'sample': [chip.name], 'platform': ['S2L2A']})  # type: ignore
     dataarray.attrs = {}
     return dataarray

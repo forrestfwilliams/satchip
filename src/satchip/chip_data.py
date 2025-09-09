@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import numpy as np
 import xarray as xr
 from tqdm import tqdm
 
@@ -15,6 +16,22 @@ from satchip.terra_mind_grid import TerraMindGrid
 
 
 GET_DATA_FNS = {'S2L2A': get_s2l2a_data, 'S1RTC': get_s1rtc_data, 'HLS': get_hls_data}
+
+
+def fill_missing_times(data_chip: xr.DataArray, times: np.ndarray) -> xr.DataArray:
+    missing_times = np.setdiff1d(times, data_chip.time.data)
+    missing_shape = (len(missing_times), len(data_chip.band), data_chip.y.size, data_chip.x.size)
+    missing_data = xr.DataArray(
+        np.full(missing_shape, 0, dtype=data_chip.dtype),
+        dims=('time', 'band', 'y', 'x'),
+        coords={
+            'time': missing_times,
+            'band': data_chip.band.data,
+            'y': data_chip.y.data,
+            'x': data_chip.x.data,
+        },
+    )
+    return xr.concat([data_chip, missing_data], dim='time').sortby('time')
 
 
 def chip_data(
@@ -41,19 +58,20 @@ def chip_data(
     data_chips = []
     if scratch_dir is not None:
         for chip in tqdm(terra_mind_chips):
-            data_chips.append(get_data_fn(chip, date, scratch_dir, opts=opts))
+            data_chips.append(get_data_fn(chip, scratch_dir, opts=opts))
     else:
         with TemporaryDirectory() as tmp_dir:
             scratch_dir = Path(tmp_dir)
             for chip in tqdm(terra_mind_chips):
-                data_chips.append(get_data_fn(chip, date, scratch_dir, opts=opts))
+                data_chips.append(get_data_fn(chip, scratch_dir, opts=opts))
 
+    times = np.unique(np.concatenate([dc.time.data for dc in data_chips]))
+    for i, data_chip in enumerate(data_chips):
+        if len(data_chip.time) < len(times):
+            data_chips[i] = fill_missing_times(data_chip, times)
     attrs = {'date_created': date.isoformat(), 'satchip_version': satchip.__version__, 'bounds': labels.attrs['bounds']}
     dataset = xr.Dataset(attrs=attrs)
-    # NOTE: may only work when all chips have same date
-    dataset['bands'] = xr.concat(data_chips, dim='sample')
-    dataset['lats'] = labels['lats']
-    dataset['lons'] = labels['lons']
+    dataset['data'] = xr.combine_by_coords(data_chips, join='override')
     output_path = output_dir / (label_path.with_suffix('').with_suffix('').name + f'_{platform}.zarr.zip')
     utils.save_chip(dataset, output_path)
     return labels
@@ -87,8 +105,8 @@ def main() -> None:
         date_start,
         date_end,
         args.strategy,
-        args.outdir,
         args.maxcloudpct,
+        args.outdir,
         args.scratchdir,
     )
 
