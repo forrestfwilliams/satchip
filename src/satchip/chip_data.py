@@ -17,7 +17,9 @@ from satchip.terra_mind_grid import TerraMindGrid
 GET_DATA_FNS = {'S2L2A': get_s2l2a_data, 'S1RTC': get_s1rtc_data, 'HLS': get_hls_data}
 
 
-def chip_data(label_path: Path, platform: str, output_dir: Path, scratch_dir: Path | None) -> xr.Dataset:
+def chip_data(
+    label_path: Path, platform: str, output_dir: Path, max_cloud_pct: int, scratch_dir: Path | None
+) -> xr.Dataset:
     get_data_fn = GET_DATA_FNS[platform]
     labels = utils.load_chip(label_path)
     date = labels.time.data[0].astype('M8[ms]').astype(datetime)
@@ -25,15 +27,19 @@ def chip_data(label_path: Path, platform: str, output_dir: Path, scratch_dir: Pa
     grid = TerraMindGrid([bounds[1] - 1, bounds[3] + 1], [bounds[0] - 1, bounds[2] + 1])
     terra_mind_chips = [c for c in grid.terra_mind_chips if c.name in list(labels.sample.data)]
 
+    opts = {}
+    if platform in ['S2L2A', 'HLS']:
+        opts['max_cloud_pct'] = max_cloud_pct
+
     data_chips = []
     if scratch_dir is not None:
         for chip in tqdm(terra_mind_chips):
-            data_chips.append(get_data_fn(chip, date, scratch_dir))
+            data_chips.append(get_data_fn(chip, date, scratch_dir, opts=opts))
     else:
         with TemporaryDirectory() as tmp_dir:
             scratch_dir = Path(tmp_dir)
             for chip in tqdm(terra_mind_chips):
-                data_chips.append(get_data_fn(chip, date, scratch_dir))
+                data_chips.append(get_data_fn(chip, date, scratch_dir, opts=opts))
 
     attrs = {'date_created': date.isoformat(), 'satchip_version': satchip.__version__, 'bounds': labels.attrs['bounds']}
     dataset = xr.Dataset(attrs=attrs)
@@ -50,13 +56,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description='Chip a label image')
     parser.add_argument('labelpath', type=Path, help='Path to the label image')
     parser.add_argument('platform', choices=['S2L2A', 'S1RTC', 'HLS'], type=str, help='Dataset to create chips for')
+    parser.add_argument('--maxcloudpct', default=100, type=int, help='Maximum percent cloud cover for a data chip')
     parser.add_argument('--outdir', default='.', type=Path, help='Output directory for the chips')
     parser.add_argument(
         '--scratchdir', default=None, type=Path, help='Output directory for scratch files if you want to keep them'
     )
     args = parser.parse_args()
     args.platform = args.platform.upper()
-    chip_data(args.labelpath, args.platform, args.outdir, args.scratchdir)
+    assert 0 <= args.maxcloudpct <= 100, 'maxcloudpct must be between 0 and 100'
+    chip_data(args.labelpath, args.platform, args.outdir, args.maxcloudpct, args.scratchdir)
 
 
 if __name__ == '__main__':
