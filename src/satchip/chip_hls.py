@@ -92,15 +92,12 @@ def get_best_scene(
     raise ValueError(f'No HLS scenes found with <= {max_cloud_pct}% cloud cover for chip.')
 
 
-def get_hls_data(chip: TerraMindChip, date: datetime, scratch_dir: Path, opts: dict) -> xr.DataArray:
+def get_hls_data(chip: TerraMindChip, scratch_dir: Path, opts: dict) -> xr.DataArray:
     """Returns XArray DataArray of a Harmonized Landsat Sentinel-2 image for the given bounds and
     closest collection after date.
-
-    If multiple images are available, the one with the most coverage is returned.
     """
-    date_end = date + timedelta(weeks=1)
-    date_start = f'{datetime.strftime(date, "%Y-%m-%d")}'
-    date_end = f'{datetime.strftime(date_end, "%Y-%m-%d")}'
+    date_start = opts['date_start']
+    date_end = opts['date_end'] + timedelta(days=1)  # inclusive end
     earthaccess.login()
     results = earthaccess.search_data(
         short_name=['HLSL30', 'HLSS30'], bounding_box=chip.bounds, temporal=(date_start, date_end)

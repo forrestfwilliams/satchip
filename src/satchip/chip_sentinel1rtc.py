@@ -48,11 +48,13 @@ def get_hyp3_rtc(scene_name: str, scratch_dir: Path) -> tuple[Path, Path]:
 
 
 def get_s1rtc_data(chip: TerraMindChip, date: datetime, scratch_dir: Path, opts: dict) -> xr.DataArray:
+    date_start = opts['date_start']
+    date_end = opts['date_end'] + timedelta(days=1)  # inclusive end
     roi = shapely.box(*chip.bounds)
     search_results = search.geo_search(
         intersectsWith=roi.wkt,
-        start=date,
-        end=date + timedelta(weeks=2),
+        start=date_start,
+        end=date_end,
         beamMode=constants.BEAMMODE.IW,
         polarization=constants.POLARIZATION.VV_VH,
         platform=constants.PLATFORM.SENTINEL1,
@@ -66,7 +68,7 @@ def get_s1rtc_data(chip: TerraMindChip, date: datetime, scratch_dir: Path, opts:
     das = []
     template = create_template_da(chip)
     for band_name, image_path in zip(['VV', 'VH'], [vv_path, vh_path]):
-        da = rioxarray.open_rasterio(image_path).rio.clip_box(*roi.buffer(0.1).bounds, crs='EPSG:4326')
+        da = rioxarray.open_rasterio(image_path).rio.clip_box(*roi.buffer(0.1).bounds, crs='EPSG:4326') # type: ignore
         da['band'] = [band_name]
         da_reproj = da.rio.reproject_match(template)
         das.append(da_reproj)

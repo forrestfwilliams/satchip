@@ -122,20 +122,24 @@ def get_best_scene(items: list[Item], roi: shapely.geometry.Polygon, max_cloud_p
     raise ValueError(f'No Sentinel-2 L2A scenes found with <= {max_cloud_pct}% cloud cover for chip.')
 
 
-def get_s2l2a_data(chip: TerraMindChip, date: datetime, scratch_dir: Path, opts: dict) -> xr.DataArray:
+def get_s2l2a_data(chip: TerraMindChip, scratch_dir: Path, opts: dict) -> xr.DataArray:
     """Get XArray DataArray of Sentinel-2 L2A image for the given bounds and best collection parameters.
 
     Args:
         chip: TerraMindChip object defining the area of interest.
-        date: Date to search for the closest Sentinel-2 L2A image.
         scratch_dir: Directory to store downloaded files.
-        opts: Additional options
+        opts: Options dictionary with the following keys
+            - date_start: Start date for the search.
+            - date_end: End date for the search.
+            - strategy (optional): Strategy to use when multiple scenes are found.
+            - max_cloud_pct (optional): Maximum percent of bad pixels allowed in the scene.
 
     Returns:
         XArray DataArray containing the Sentinel-2 L2A image data.
     """
-    date_end = date + timedelta(weeks=1)
-    date_range = f'{datetime.strftime(date, "%Y-%m-%d")}/{datetime.strftime(date_end, "%Y-%m-%d")}'
+    date_start = opts['date_start']
+    date_end = opts['date_end'] + timedelta(days=1)  # inclusive end
+    date_range = f'{datetime.strftime(date_start, "%Y-%m-%d")}/{datetime.strftime(date_end, "%Y-%m-%d")}'
     roi = shapely.box(*chip.bounds)
     roi_buffered = roi.buffer(0.01)
     client = Client.open('https://earth-search.aws.element84.com/v1')

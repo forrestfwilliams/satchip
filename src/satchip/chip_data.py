@@ -18,7 +18,14 @@ GET_DATA_FNS = {'S2L2A': get_s2l2a_data, 'S1RTC': get_s1rtc_data, 'HLS': get_hls
 
 
 def chip_data(
-    label_path: Path, platform: str, output_dir: Path, max_cloud_pct: int, scratch_dir: Path | None
+    label_path: Path,
+    platform: str,
+    date_start: datetime,
+    date_end: datetime,
+    strategy: str,
+    max_cloud_pct: int,
+    output_dir: Path,
+    scratch_dir: Path | None = None,
 ) -> xr.Dataset:
     get_data_fn = GET_DATA_FNS[platform]
     labels = utils.load_chip(label_path)
@@ -27,7 +34,7 @@ def chip_data(
     grid = TerraMindGrid([bounds[1] - 1, bounds[3] + 1], [bounds[0] - 1, bounds[2] + 1])
     terra_mind_chips = [c for c in grid.terra_mind_chips if c.name in list(labels.sample.data)]
 
-    opts = {}
+    opts = {'strategy': strategy, 'date_start': date_start, 'date_end': date_end}
     if platform in ['S2L2A', 'HLS']:
         opts['max_cloud_pct'] = max_cloud_pct
 
@@ -56,15 +63,34 @@ def main() -> None:
     parser = argparse.ArgumentParser(description='Chip a label image')
     parser.add_argument('labelpath', type=Path, help='Path to the label image')
     parser.add_argument('platform', choices=['S2L2A', 'S1RTC', 'HLS'], type=str, help='Dataset to create chips for')
+    parser.add_argument('daterange', type=str, help='Inclusive date range to search for data in the format Ymd-Ymd')
     parser.add_argument('--maxcloudpct', default=100, type=int, help='Maximum percent cloud cover for a data chip')
     parser.add_argument('--outdir', default='.', type=Path, help='Output directory for the chips')
     parser.add_argument(
         '--scratchdir', default=None, type=Path, help='Output directory for scratch files if you want to keep them'
     )
+    parser.add_argument(
+        '--strategy',
+        default='BEST',
+        choices=['BEST', 'ALL'],
+        type=str,
+        help='Strategy to use when multiple scenes are found (default: BEST)',
+    )
     args = parser.parse_args()
     args.platform = args.platform.upper()
     assert 0 <= args.maxcloudpct <= 100, 'maxcloudpct must be between 0 and 100'
-    chip_data(args.labelpath, args.platform, args.outdir, args.maxcloudpct, args.scratchdir)
+    date_start, date_end = [datetime.strptime(d, '%Y%m%d') for d in args.daterange.split('-')]
+    assert date_start < date_end, 'start date must be before end date'
+    chip_data(
+        args.labelpath,
+        args.platform,
+        date_start,
+        date_end,
+        args.strategy,
+        args.outdir,
+        args.maxcloudpct,
+        args.scratchdir,
+    )
 
 
 if __name__ == '__main__':
