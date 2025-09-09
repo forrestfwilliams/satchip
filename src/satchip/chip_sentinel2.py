@@ -122,7 +122,7 @@ def get_best_scene(items: list[Item], roi: shapely.geometry.Polygon, max_cloud_p
     raise ValueError(f'No Sentinel-2 L2A scenes found with <= {max_cloud_pct}% cloud cover for chip.')
 
 
-def get_s2l2a_data(chip: TerraMindChip, date: datetime, scratch_dir: Path, opts:dict) -> xr.DataArray:
+def get_s2l2a_data(chip: TerraMindChip, date: datetime, scratch_dir: Path, opts: dict) -> xr.DataArray:
     """Get XArray DataArray of Sentinel-2 L2A image for the given bounds and best collection parameters.
 
     Args:
