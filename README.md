@@ -15,21 +15,20 @@ For example:
 ```bash
 chiplabel LA_damage_20250113_v0.tif 2024-01-01T01:01:01 --outdir chips
 ```
-This will produce an output zipped Zarr store label dataset with the name `{LABELS}.zarr.zip` in the specified output directory (`--outdir`).
-This file will be the input to the remote sensing data chipping step.
+This will produce an output zipped Zarr store label dataset with the name `{LABELS}.zarr.zip` in the specified output directory (`--outdir`). This file will be the input to the remote sensing data chipping step.
 
 For more information on usage see `chiplabel --help`
 
 ### Step 2: Chip remote sensing data
 The `chipdata` CLI tool takes a label zipped Zarr store, a dataset name, and an optional output directory as input using the following format:
 ```bash
-chipdata PATH/TO/LABELS.zarr.zip DATASET --outdir OUTPUT_DIR
+chipdata PATH/TO/LABELS.zarr.zip DATASET --outdir OUTPUT_DIR --scratchdir SCRATCH_DIR --maxcloudpct MAX_CLOUD_PCT
 ```
 For example:
 ```bash
-chipdata LA_damage_20250113_v0.zarr.zip S2L2A --outdir chips
+chipdata LA_damage_20250113_v0.zarr.zip S2L2A --outdir chips --scratchdir images --maxcloudpct 20
 ```
-Similarly to step 1, this will produce an output zipped Zarr store that contains chipped data for your chosen dataset with the name `{LABELS}_{DATASET}.zarr.zip`.
+Similarly to step 1, this will produce an output zipped Zarr store that contains chipped data for your chosen dataset with the name `{LABELS}_{DATASET}.zarr.zip`. `--scratchdir` is an optional argument that specifies a directory to use for temporary storage of downloaded imagery.Imagery won't be saved unless `--scratchdir` is specified. `--maxcloudpct` is an optional argument that specifies the maximum cloud cover percentage allowed for a chip to be included in the output dataset. The default value is 100 (i.e., no filtering). Note that the cloud coverage calculated is for a specific chip, not the entire scene.
 
 Currently support datasets include:
 - `S2L2A`: Sentinel-2 L2A data sourced from the [Sentinel-2 AWS Open Data Archive](https://registry.opendata.aws/sentinel-2/)

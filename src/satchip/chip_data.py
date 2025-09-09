@@ -63,6 +63,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     args.platform = args.platform.upper()
+    assert 0 <= args.maxcloudpct <= 100, 'maxcloudpct must be between 0 and 100'
     chip_data(args.labelpath, args.platform, args.outdir, args.maxcloudpct, args.scratchdir)
 
 
