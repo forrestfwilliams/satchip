@@ -48,7 +48,7 @@ def chip_data(
     labels = utils.load_chip(label_path)
     date = labels.time.data[0].astype('M8[ms]').astype(datetime)
     bounds = labels.attrs['bounds']
-    grid = TerraMindGrid([bounds[1] - 1, bounds[3] + 1], [bounds[0] - 1, bounds[2] + 1])
+    grid = TerraMindGrid([bounds[1] - 1, bounds[3] + 1], [bounds[0] - 1, bounds[2] + 1])  # type: ignore
     terra_mind_chips = [c for c in grid.terra_mind_chips if c.name in list(labels.sample.data)]
 
     opts = {'strategy': strategy, 'date_start': date_start, 'date_end': date_end}

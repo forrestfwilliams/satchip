@@ -16,18 +16,18 @@ from satchip.terra_mind_grid import TerraMindChip
 
 
 S2_BANDS = {
-    'B01': 'coastal',
-    'B02': 'blue',
-    'B03': 'green',
-    'B04': 'red',
-    'B05': 'rededge1',
-    'B06': 'rededge2',
-    'B07': 'rededge3',
-    'B08': 'nir',
-    'B8A': 'nir08',
-    'B09': 'nir09',
-    'B11': 'swir16',
-    'B12': 'swir22',
+    'B01': 'COASTAL',
+    'B02': 'BLUE',
+    'B03': 'GREEN',
+    'B04': 'RED',
+    'B05': 'REDEDGE1',
+    'B06': 'REDEDGE2',
+    'B07': 'REDEDGE3',
+    'B08': 'NIR',
+    'B8A': 'NIR08',
+    'B09': 'NIR09',
+    'B11': 'SWIR16',
+    'B12': 'SWIR22',
 }
 
 S3_FS = s3fs.S3FileSystem(anon=True)
@@ -154,6 +154,7 @@ def get_s2l2a_data(chip: TerraMindChip, scratch_dir: Path, opts: dict) -> xr.Dat
         datetime=date_range,
         max_items=1000,
     )
+    assert len(search.item_collection()) > 0, f'No Sentinel-2 L2A scenes found for chip {chip.name} between {date_start} and {date_end}.'
     items = list(search.item_collection())
     max_cloud_pct = opts.get('max_cloud_pct', 100)
     strategy = opts.get('strategy', 'BEST')
@@ -172,9 +173,10 @@ def get_s2l2a_data(chip: TerraMindChip, scratch_dir: Path, opts: dict) -> xr.Dat
             da_reproj = da_reproj.expand_dims({'time': [item.datetime.replace(tzinfo=None)]})  # type: ignore
             da_reproj['x'] = np.arange(0, chip.ncol)
             da_reproj['y'] = np.arange(0, chip.nrow)
+            da_reproj.attrs = {}
             das.append(da_reproj)
     dataarray = xr.combine_by_coords(das, join='override').drop_vars('spatial_ref')
     assert isinstance(dataarray, xr.DataArray)
-    dataarray = dataarray.expand_dims({'sample': [chip.name], 'platform': ['S2L2A']})  # type: ignore
+    dataarray = dataarray.expand_dims({'sample': [chip.name], 'platform': ['S2L2A']})
     dataarray.attrs = {}
     return dataarray

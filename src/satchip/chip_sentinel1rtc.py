@@ -89,5 +89,5 @@ def get_s1rtc_data(chip: TerraMindChip, scratch_dir: Path, opts: dict) -> xr.Dat
             das.append(da_reproj)
     dataarray = xr.combine_by_coords(das, join='override').drop_vars('spatial_ref')
     assert isinstance(dataarray, xr.DataArray)
-    dataarray = dataarray.expand_dims({'sample': [chip.name], 'platform': ['S1RTC']})  # type: ignore
+    dataarray = dataarray.expand_dims({'sample': [chip.name], 'platform': ['S1RTC']})
     return dataarray
