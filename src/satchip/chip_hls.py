@@ -67,7 +67,8 @@ def get_scenes(
     Returns:
         The best HLS item.
     """
-    best_first = sorted(items, key=lambda x: (-get_pct_intersect(x['umm'], roi), get_date(x['umm'])))
+    overlapping_items = [x for x in items if get_pct_intersect(x['umm'], roi) > 95]
+    best_first = sorted(overlapping_items, key=lambda x: (-get_pct_intersect(x['umm'], roi), get_date(x['umm'])))
     valid_scenes = []
     for item in best_first:
         product_id = get_product_id(item['umm'])

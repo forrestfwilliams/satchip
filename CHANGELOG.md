@@ -10,6 +10,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 * Support for specifying per-chip maximum cloud cover percentage when creating Sentinel-2 and HLS chips.
+* Support for getting all images within a date range or the best one.
+
+### Changed
+* `chipdata` interface so that a date range must be provided
 
 ## [0.2.0]
 
