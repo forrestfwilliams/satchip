@@ -46,8 +46,8 @@ def get_hyp3_rtcs(items: ASFSearchResults, roi: shapely.geometry.Polygon, strate
         scene_name = item.properties['sceneName']
         matching_jobs = [j for j in old_jobs if j.job_parameters['granules'] == [scene_name]]  # type: ignore
         if len(matching_jobs) == 0:
-            job = hyp3.submit_rtc_job(scene_name, radiometry='gamma0', resolution=20)
-            jobs.append(job)
+            new_batch = hyp3.submit_rtc_job(scene_name, radiometry='gamma0', resolution=20)
+            jobs.append(list(new_batch)[0])
         else:
             jobs.append(matching_jobs[0])
     jobs = Batch(jobs)

@@ -101,7 +101,7 @@ def get_scenes(
         The best Sentinel-2 L2A item.
     """
     strategy = strategy.upper()
-    assert strategy in ['BEST', 'ALL'], f'Invalid strategy: {strategy}'
+    assert strategy in ['BEST', 'ALL'], 'Strategy must be either BEST or ALL'
     assert len(items) > 0, 'No Sentinel-2 L2A scenes found for chip.'
     items = [item for item in items if get_pct_intersect(item.geometry, roi) > 0.95]
     best_first = sorted(items, key=lambda x: (-get_pct_intersect(x.geometry, roi), x.datetime))
@@ -122,9 +122,9 @@ def get_scenes(
                 return [item]
             else:
                 valid_scenes.append(item)
-    if strategy == 'ALL':
-        return valid_scenes
-    raise ValueError(f'No Sentinel-2 L2A scenes found with <= {max_cloud_pct}% cloud cover for chip.')
+
+    assert len(valid_scenes) > 0, f'No Sentinel-2 L2A scenes found with <={max_cloud_pct}% cloud cover for chip.'
+    return valid_scenes
 
 
 def get_s2l2a_data(chip: TerraMindChip, scratch_dir: Path, opts: dict) -> xr.DataArray:
@@ -161,13 +161,13 @@ def get_s2l2a_data(chip: TerraMindChip, scratch_dir: Path, opts: dict) -> xr.Dat
     max_cloud_pct = opts.get('max_cloud_pct', 100)
     strategy = opts.get('strategy', 'BEST')
     items = get_scenes(items, roi, strategy, max_cloud_pct, scratch_dir)
-    urls = [item.assets[S2_BANDS[band]].href for item in items for band in S2_BANDS]
+    urls = [item.assets[S2_BANDS[band].lower()].href for item in items for band in S2_BANDS]
     multithread_fetch_s3_file(urls, scratch_dir)
     template = create_template_da(chip)
     das = []
     for item in items:
         for band in S2_BANDS:
-            local_path = url_to_localpath(item.assets[S2_BANDS[band]].href, scratch_dir)
+            local_path = url_to_localpath(item.assets[S2_BANDS[band].lower()].href, scratch_dir)
             assert local_path.exists(), f'File not found: {local_path}'
             da = rioxarray.open_rasterio(local_path).rio.clip_box(*roi_buffered.bounds, crs='EPSG:4326')  # type: ignore
             da_reproj = da.rio.reproject_match(template)

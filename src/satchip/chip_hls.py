@@ -37,7 +37,7 @@ def get_pct_intersect(umm: dict, roi: shapely.geometry.Polygon) -> float:
     points = umm['SpatialExtent']['HorizontalSpatialDomain']['Geometry']['GPolygons'][0]['Boundary']['Points']
     coords = [(pt['Longitude'], pt['Latitude']) for pt in points]
     image_roi = shapely.geometry.Polygon(coords)
-    return roi.intersection(image_roi).area / roi.area
+    return int(np.round(roi.intersection(image_roi).area / roi.area * 100))
 
 
 def get_date(umm: dict) -> datetime:
@@ -65,8 +65,9 @@ def get_scenes(
         scratch_dir: Directory to store downloaded files.
 
     Returns:
-        The best HLS item.
+        The best HLS items.
     """
+    assert strategy in ['BEST', 'ALL'], 'Strategy must be either BEST or ALL'
     overlapping_items = [x for x in items if get_pct_intersect(x['umm'], roi) > 95]
     best_first = sorted(overlapping_items, key=lambda x: (-get_pct_intersect(x['umm'], roi), get_date(x['umm'])))
     valid_scenes = []
@@ -88,9 +89,8 @@ def get_scenes(
                 return [item]
             else:
                 valid_scenes.append(item)
-    if strategy == 'ALL':
-        return valid_scenes
-    raise ValueError(f'No HLS scenes found with <= {max_cloud_pct}% cloud cover for chip.')
+    assert len(valid_scenes) > 0, f'No HLS scenes found with <={max_cloud_pct}% cloud cover for chip.'
+    return valid_scenes
 
 
 def get_hls_data(chip: TerraMindChip, scratch_dir: Path, opts: dict) -> xr.DataArray:
