@@ -10,13 +10,19 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 * Support for specifying per-chip maximum cloud cover percentage when creating Sentinel-2 and HLS chips.
+* Support for getting all images within a date range or the best one.
+
+### Changed
+* `chipdata` interface so that a date range must be provided.
+* Zarr structure for image chip datasets to support multi-temporal chips.
+* HLS and S2L2A band names to be capitalized color names (ex. `BLUE` instead of `B02`).
 
 ## [0.2.0]
 
 ### Added
 * Support for Harmonized Landsat Sentinel-2 data.
 * Support for persistent scratch directory for image downloads.
-* `chipview` CLI tool for view chip datasets
+* `chipview` CLI tool for view chip datasets.
 
 ### Changed
 * Alignment of TerraMind chips to be centered within MajorTom chips.
