@@ -154,7 +154,9 @@ def get_s2l2a_data(chip: TerraMindChip, scratch_dir: Path, opts: dict) -> xr.Dat
         datetime=date_range,
         max_items=1000,
     )
-    assert len(search.item_collection()) > 0, f'No Sentinel-2 L2A scenes found for chip {chip.name} between {date_start} and {date_end}.'
+    assert len(search.item_collection()) > 0, (
+        f'No Sentinel-2 L2A scenes found for chip {chip.name} between {date_start} and {date_end}.'
+    )
     items = list(search.item_collection())
     max_cloud_pct = opts.get('max_cloud_pct', 100)
     strategy = opts.get('strategy', 'BEST')
