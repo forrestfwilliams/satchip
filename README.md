@@ -33,10 +33,10 @@ chipdata LA_damage_20250113_v0.zarr.zip S2L2A 20250112-20250212 --maxcloudpct 20
 Similarly to step 1, this will produce an output zipped Zarr store that contains chipped data for your chosen dataset with the name `{LABELS}_{DATASET}.zarr.zip`. The arguments are as follows:
 - `PATH/TO/LABELS.zarr.zip`: the path to your training lables.
 - `DATASET`: The satellite imagery dataset you would like to create labels for. See the list below for all current options.
-- `Ymd-Ymd`: The date range to select imagery from. For example, `20250112-20250212` would selected imagery between January 12 and February 12, 2025.
+- `Ymd-Ymd`: The date range to select imagery from. For example, `20250112-20250212` selects imagery between January 12 and February 12, 2025.
 - `MAX_CLOUD_PCT`: For optical data, this optional parameter lets you set the maximum amount of cloud coverage allowed in a chip. Values between 0 and 100 are allowed. Cloud coverage is calculated on a per-chip basis. The default is 100 i.e., no limit.
 - `STRATEGY`: Lets you selected what data inside your date range will be used to create chips. Specifying `BEST` (the default) will create a chip for the image closest to the beginning of your date range that has at least 95% spatial coverage. Specifying `ALL` will create chips for all images within your date range that have at least 95% spatial coverage.
-- `OUTPUT_DIR`: Specifies the directory where the image chips will be stored. If not specified, this defaults to your current directory.
+- `OUTPUT_DIR`: Specifies the directory where the image chips will be saved. If not specified, this defaults to your current directory.
 - `SCRATCH_DIR`: Specifies the directory where the full-size satellite images will be downloaded to. If this argument is not provided, the images will be stored in a scratch directory that will be deleted when the `chipdata` call finishes.
 
 Currently supported datasets include:
