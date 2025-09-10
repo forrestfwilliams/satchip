@@ -57,7 +57,7 @@ def chip_data(
 
     data_chips = []
     if scratch_dir is not None:
-        for chip in tqdm(terra_mind_chips[:3]):
+        for chip in tqdm(terra_mind_chips):
             data_chips.append(get_data_fn(chip, scratch_dir, opts=opts))
     else:
         with TemporaryDirectory() as tmp_dir:
